@@ -1,0 +1,29 @@
+.shift {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  white-space: nowrap;
+  font-size: var(--fb-font-size-xs);
+}
+
+.same {
+  color: var(--fb-text-muted);
+}
+
+.shifted {
+  padding: 0.125rem 0.375rem;
+  border-radius: var(--fb-radius-xs);
+  color: var(--fb-brand);
+  background-color: var(--fb-brand-subtle);
+  font-weight: 600;
+}
+
+.origin {
+  text-decoration: line-through;
+  opacity: 0.7;
+}
+
+.undefined {
+  color: var(--fb-text-muted);
+  font-style: italic;
+}

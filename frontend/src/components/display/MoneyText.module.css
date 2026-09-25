@@ -1,0 +1,22 @@
+.value {
+  font-family: var(--fb-font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  color: var(--fb-text);
+}
+
+.muted {
+  color: var(--fb-text-muted);
+}
+
+.inflow {
+  color: var(--fb-inflow);
+}
+
+.outflow {
+  color: var(--fb-outflow);
+}
+
+.strong {
+  font-weight: 600;
+}

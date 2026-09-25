@@ -1,0 +1,179 @@
+:root {
+  --fb-gray-0: #f8fafc;
+  --fb-gray-1: #f1f5f9;
+  --fb-gray-2: #e2e8f0;
+  --fb-gray-3: #cbd5e1;
+  --fb-gray-4: #94a3b8;
+  --fb-gray-5: #64748b;
+  --fb-gray-6: #475569;
+  --fb-gray-7: #334155;
+  --fb-gray-8: #1e293b;
+  --fb-gray-9: #0f172a;
+  --fb-gray-10: #060b16;
+
+  --fb-blue-0: #eff6ff;
+  --fb-blue-1: #dbeafe;
+  --fb-blue-2: #bfdbfe;
+  --fb-blue-3: #93c5fd;
+  --fb-blue-4: #60a5fa;
+  --fb-blue-5: #3b82f6;
+  --fb-blue-6: #2563eb;
+  --fb-blue-7: #1d4ed8;
+  --fb-blue-8: #1e40af;
+  --fb-blue-9: #172554;
+
+  --fb-green-0: #ecfdf5;
+  --fb-green-1: #d1fae5;
+  --fb-green-2: #a7f3d0;
+  --fb-green-3: #6ee7b7;
+  --fb-green-4: #34d399;
+  --fb-green-5: #10b981;
+  --fb-green-6: #059669;
+  --fb-green-7: #047857;
+  --fb-green-8: #065f46;
+  --fb-green-9: #022c22;
+
+  --fb-red-0: #fef2f2;
+  --fb-red-1: #fee2e2;
+  --fb-red-2: #fecaca;
+  --fb-red-3: #fca5a5;
+  --fb-red-4: #f87171;
+  --fb-red-5: #ef4444;
+  --fb-red-6: #dc2626;
+  --fb-red-7: #b91c1c;
+  --fb-red-8: #991b1b;
+  --fb-red-9: #450a0a;
+
+  --fb-amber-0: #fffbeb;
+  --fb-amber-1: #fef3c7;
+  --fb-amber-2: #fde68a;
+  --fb-amber-3: #fcd34d;
+  --fb-amber-4: #fbbf24;
+  --fb-amber-5: #f59e0b;
+  --fb-amber-6: #d97706;
+  --fb-amber-7: #b45309;
+  --fb-amber-8: #92400e;
+  --fb-amber-9: #451a03;
+
+  --fb-font-sans: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+  --fb-font-mono: 'JetBrains Mono', 'Cascadia Mono', 'Consolas', monospace;
+
+  --fb-font-size-xs: 0.75rem;
+  --fb-font-size-sm: 0.8125rem;
+  --fb-font-size-md: 0.875rem;
+  --fb-font-size-lg: 1rem;
+  --fb-font-size-xl: 1.25rem;
+
+  --fb-line-height-tight: 1.25;
+  --fb-line-height-normal: 1.55;
+
+  --fb-space-xs: 0.5rem;
+  --fb-space-sm: 0.75rem;
+  --fb-space-md: 1rem;
+  --fb-space-lg: 1.5rem;
+  --fb-space-xl: 2rem;
+
+  --fb-radius-xs: 0.25rem;
+  --fb-radius-sm: 0.375rem;
+  --fb-radius-md: 0.5rem;
+  --fb-radius-lg: 0.75rem;
+  --fb-radius-xl: 1rem;
+
+  --fb-header-height: 3.5rem;
+  --fb-navbar-width: 15rem;
+}
+
+:root,
+:root[data-mantine-color-scheme='light'] {
+  --fb-body: var(--fb-gray-1);
+  --fb-surface: #ffffff;
+  --fb-surface-raised: #ffffff;
+  --fb-surface-sunken: var(--fb-gray-0);
+  --fb-surface-hover: var(--fb-gray-1);
+
+  --fb-text: var(--fb-gray-9);
+  --fb-text-muted: var(--fb-gray-5);
+  --fb-text-inverted: #ffffff;
+
+  --fb-border: var(--fb-gray-2);
+  --fb-border-strong: var(--fb-gray-3);
+
+  --fb-brand: var(--fb-blue-6);
+  --fb-brand-hover: var(--fb-blue-7);
+  --fb-brand-contrast: #ffffff;
+  --fb-brand-subtle: var(--fb-blue-0);
+
+  --fb-inflow: var(--fb-green-7);
+  --fb-inflow-bg: var(--fb-green-0);
+  --fb-outflow: var(--fb-red-7);
+  --fb-outflow-bg: var(--fb-red-0);
+
+  --fb-chart-inflow: var(--fb-green-7);
+  --fb-chart-outflow: var(--fb-red-7);
+  --fb-chart-balance: var(--fb-blue-6);
+  --fb-chart-grid: var(--fb-gray-2);
+  --fb-chart-axis: var(--fb-gray-4);
+
+  --fb-status-pending: var(--fb-amber-7);
+  --fb-status-pending-bg: var(--fb-amber-1);
+  --fb-status-paid: var(--fb-green-7);
+  --fb-status-paid-bg: var(--fb-green-1);
+  --fb-status-overdue: var(--fb-red-7);
+  --fb-status-overdue-bg: var(--fb-red-1);
+
+  --fb-danger: var(--fb-red-6);
+  --fb-danger-bg: var(--fb-red-0);
+  --fb-success: var(--fb-green-6);
+
+  --fb-shadow-xs: 0 1px 2px rgb(15 23 42 / 6%);
+  --fb-shadow-sm: 0 1px 3px rgb(15 23 42 / 8%), 0 1px 2px rgb(15 23 42 / 4%);
+  --fb-shadow-md: 0 4px 12px rgb(15 23 42 / 8%);
+  --fb-shadow-lg: 0 12px 32px rgb(15 23 42 / 12%);
+}
+
+:root[data-mantine-color-scheme='dark'] {
+  --fb-body: var(--fb-gray-10);
+  --fb-surface: var(--fb-gray-9);
+  --fb-surface-raised: var(--fb-gray-8);
+  --fb-surface-sunken: var(--fb-gray-10);
+  --fb-surface-hover: var(--fb-gray-8);
+
+  --fb-text: var(--fb-gray-1);
+  --fb-text-muted: var(--fb-gray-4);
+  --fb-text-inverted: var(--fb-gray-9);
+
+  --fb-border: var(--fb-gray-8);
+  --fb-border-strong: var(--fb-gray-7);
+
+  --fb-brand: var(--fb-blue-4);
+  --fb-brand-hover: var(--fb-blue-3);
+  --fb-brand-contrast: var(--fb-gray-9);
+  --fb-brand-subtle: rgb(37 99 235 / 18%);
+
+  --fb-inflow: var(--fb-green-3);
+  --fb-inflow-bg: rgb(16 185 129 / 14%);
+  --fb-outflow: var(--fb-red-3);
+  --fb-outflow-bg: rgb(239 68 68 / 14%);
+
+  --fb-chart-inflow: var(--fb-green-6);
+  --fb-chart-outflow: var(--fb-red-5);
+  --fb-chart-balance: var(--fb-blue-5);
+  --fb-chart-grid: var(--fb-gray-8);
+  --fb-chart-axis: var(--fb-gray-6);
+
+  --fb-status-pending: var(--fb-amber-3);
+  --fb-status-pending-bg: rgb(245 158 11 / 16%);
+  --fb-status-paid: var(--fb-green-3);
+  --fb-status-paid-bg: rgb(16 185 129 / 16%);
+  --fb-status-overdue: var(--fb-red-3);
+  --fb-status-overdue-bg: rgb(239 68 68 / 16%);
+
+  --fb-danger: var(--fb-red-4);
+  --fb-danger-bg: rgb(239 68 68 / 14%);
+  --fb-success: var(--fb-green-4);
+
+  --fb-shadow-xs: 0 1px 2px rgb(0 0 0 / 40%);
+  --fb-shadow-sm: 0 1px 3px rgb(0 0 0 / 50%), 0 1px 2px rgb(0 0 0 / 30%);
+  --fb-shadow-md: 0 4px 12px rgb(0 0 0 / 55%);
+  --fb-shadow-lg: 0 12px 32px rgb(0 0 0 / 65%);
+}

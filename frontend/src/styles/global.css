@@ -1,0 +1,26 @@
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background-color: var(--fb-body);
+  color: var(--fb-text);
+  font-family: var(--fb-font-sans);
+  font-size: var(--fb-font-size-md);
+  line-height: var(--fb-line-height-normal);
+  -webkit-font-smoothing: antialiased;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+.fb-numeric {
+  font-family: var(--fb-font-mono);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}

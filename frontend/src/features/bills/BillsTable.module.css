@@ -1,0 +1,78 @@
+.wrapper {
+  overflow-x: auto;
+  background-color: var(--fb-surface);
+  border: 1px solid var(--fb-border);
+  border-radius: var(--fb-radius-lg);
+  box-shadow: var(--fb-shadow-xs);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: var(--fb-font-size-md);
+}
+
+.table th {
+  padding: var(--fb-space-sm) var(--fb-space-md);
+  font-size: var(--fb-font-size-xs);
+  font-weight: 600;
+  text-align: left;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fb-text-muted);
+  background-color: var(--fb-surface-sunken);
+  border-bottom: 1px solid var(--fb-border);
+  white-space: nowrap;
+}
+
+.table td {
+  padding: var(--fb-space-sm) var(--fb-space-md);
+  border-bottom: 1px solid var(--fb-border);
+  color: var(--fb-text);
+  vertical-align: middle;
+}
+
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.table tbody tr:hover td {
+  background-color: var(--fb-surface-hover);
+}
+
+.numeric {
+  text-align: right;
+}
+
+.document {
+  font-weight: 600;
+}
+
+.secondary {
+  display: block;
+  font-size: var(--fb-font-size-xs);
+  color: var(--fb-text-muted);
+}
+
+.invoiceTag {
+  display: inline-block;
+  margin-top: 0.125rem;
+  padding: 0 0.375rem;
+  border-radius: var(--fb-radius-xs);
+  font-size: var(--fb-font-size-xs);
+  color: var(--fb-brand);
+  background-color: var(--fb-brand-subtle);
+}
+
+.footer td {
+  padding: var(--fb-space-sm) var(--fb-space-md);
+  font-weight: 600;
+  background-color: var(--fb-surface-sunken);
+  border-top: 1px solid var(--fb-border-strong);
+}
+
+.empty {
+  padding: var(--fb-space-xl);
+  text-align: center;
+  color: var(--fb-text-muted);
+}

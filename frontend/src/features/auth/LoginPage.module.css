@@ -1,0 +1,40 @@
+.root {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 100vh;
+  padding: var(--fb-space-lg);
+  background-color: var(--fb-body);
+}
+
+.card {
+  width: 100%;
+  max-width: 24rem;
+  padding: var(--fb-space-xl);
+  background-color: var(--fb-surface);
+  border: 1px solid var(--fb-border);
+  border-radius: var(--fb-radius-lg);
+  box-shadow: var(--fb-shadow-md);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--fb-space-xs);
+  font-size: var(--fb-font-size-xl);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--fb-text);
+}
+
+.brandMark {
+  color: var(--fb-brand);
+}
+
+.subtitle {
+  margin: 0;
+  text-align: center;
+  font-size: var(--fb-font-size-sm);
+  color: var(--fb-text-muted);
+}

@@ -1,0 +1,10 @@
+.trigger {
+  display: flex;
+  align-items: center;
+  border-radius: 100%;
+}
+
+.trigger:focus-visible {
+  outline: 2px solid var(--fb-brand);
+  outline-offset: 2px;
+}

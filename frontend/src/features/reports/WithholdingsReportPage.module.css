@@ -1,0 +1,63 @@
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(17rem, 1fr));
+  gap: var(--fb-space-md);
+}
+
+.card {
+  padding: var(--fb-space-md);
+  background-color: var(--fb-surface);
+  border: 1px solid var(--fb-border);
+  border-radius: var(--fb-radius-lg);
+  box-shadow: var(--fb-shadow-xs);
+}
+
+.cardTitle {
+  font-size: var(--fb-font-size-md);
+  font-weight: 600;
+  color: var(--fb-text);
+}
+
+.cardMeta {
+  margin-top: 0.125rem;
+  font-size: var(--fb-font-size-xs);
+  color: var(--fb-text-muted);
+}
+
+.cardTotal {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: var(--fb-space-sm) 0;
+  margin: var(--fb-space-sm) 0;
+  border-top: 1px solid var(--fb-border);
+  border-bottom: 1px solid var(--fb-border);
+}
+
+.breakdown {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.breakdownRow {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  font-size: var(--fb-font-size-xs);
+  color: var(--fb-text-muted);
+}
+
+.zero {
+  color: var(--fb-text-muted);
+  opacity: 0.55;
+}
+
+.groupHeading {
+  padding: var(--fb-space-sm) 0 0.25rem;
+  font-size: var(--fb-font-size-xs);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fb-text-muted);
+}

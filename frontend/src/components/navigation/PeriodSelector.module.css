@@ -1,0 +1,44 @@
+.root {
+  display: flex;
+  align-items: center;
+  gap: var(--fb-space-sm);
+  width: 100%;
+}
+
+.yearButton {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.months {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.segmentedRoot {
+  background-color: var(--fb-surface-sunken);
+  border: 1px solid var(--fb-border);
+  border-radius: var(--fb-radius-md);
+}
+
+.segmentedIndicator {
+  background-color: var(--fb-brand);
+  border-radius: var(--fb-radius-sm);
+  box-shadow: var(--fb-shadow-xs);
+}
+
+.segmentedLabel {
+  padding: 0.25rem var(--fb-space-xs);
+  font-size: var(--fb-font-size-xs);
+  font-weight: 500;
+  color: var(--fb-text-muted);
+}
+
+.segmentedLabel:hover:not([data-active]) {
+  color: var(--fb-text);
+}
+
+.segmentedLabel[data-active] {
+  font-weight: 700;
+  color: var(--fb-brand-contrast);
+}

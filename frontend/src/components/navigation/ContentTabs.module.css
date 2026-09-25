@@ -1,0 +1,49 @@
+.tabs {
+  --tab-border-color: var(--fb-border);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+}
+
+.list {
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+
+.list::-webkit-scrollbar {
+  display: none;
+}
+
+.tab {
+  flex: 0 0 auto;
+  padding: var(--fb-space-xs) var(--fb-space-md);
+  font-size: var(--fb-font-size-md);
+  font-weight: 500;
+  color: var(--fb-text-muted);
+  background-color: var(--fb-surface-sunken);
+  text-decoration: none;
+}
+
+.tab:hover:not([data-active]) {
+  background-color: var(--fb-surface-hover);
+  color: var(--fb-text);
+}
+
+.tab[data-active] {
+  --tab-border-bottom-color: var(--fb-surface);
+  background-color: var(--fb-surface);
+  color: var(--fb-brand);
+  font-weight: 600;
+}
+
+.panel {
+  flex: 1 1 auto;
+  min-height: 0;
+  background-color: var(--fb-surface);
+  border: 1px solid var(--fb-border);
+  border-top: none;
+  border-bottom-left-radius: var(--fb-radius-lg);
+  border-bottom-right-radius: var(--fb-radius-lg);
+}

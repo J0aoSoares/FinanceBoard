@@ -1,0 +1,121 @@
+.root {
+  position: relative;
+  padding: var(--fb-space-md);
+  background-color: var(--fb-surface);
+  border: 1px solid var(--fb-border);
+  border-radius: var(--fb-radius-lg);
+  box-shadow: var(--fb-shadow-xs);
+}
+
+.legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--fb-space-md);
+  margin-bottom: var(--fb-space-sm);
+}
+
+.legendItem {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  font-size: var(--fb-font-size-xs);
+  color: var(--fb-text-muted);
+}
+
+.swatch {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: var(--fb-radius-xs);
+}
+
+.swatchLine {
+  width: 0.875rem;
+  height: 0.125rem;
+  border-radius: 1px;
+}
+
+.plot {
+  display: block;
+  width: 100%;
+}
+
+.gridLine {
+  stroke: var(--fb-chart-grid);
+  stroke-width: 1;
+}
+
+.zeroLine {
+  stroke: var(--fb-chart-axis);
+  stroke-width: 1;
+}
+
+.crosshair {
+  stroke: var(--fb-chart-axis);
+  stroke-width: 1;
+  stroke-dasharray: 3 3;
+}
+
+.axisText {
+  fill: var(--fb-text-muted);
+  font-size: 0.6875rem;
+}
+
+.inflowMark {
+  fill: var(--fb-chart-inflow);
+}
+
+.outflowMark {
+  fill: var(--fb-chart-outflow);
+}
+
+.balanceLine {
+  fill: none;
+  stroke: var(--fb-chart-balance);
+  stroke-width: 2;
+  stroke-linejoin: round;
+  stroke-linecap: round;
+}
+
+.balanceMarker {
+  fill: var(--fb-chart-balance);
+  stroke: var(--fb-surface);
+  stroke-width: 2;
+}
+
+.hitArea {
+  fill: transparent;
+}
+
+.tooltip {
+  position: absolute;
+  z-index: 2;
+  min-width: 12rem;
+  padding: var(--fb-space-sm);
+  background-color: var(--fb-surface-raised);
+  border: 1px solid var(--fb-border-strong);
+  border-radius: var(--fb-radius-md);
+  box-shadow: var(--fb-shadow-md);
+  pointer-events: none;
+}
+
+.tooltipTitle {
+  margin-bottom: 0.25rem;
+  font-size: var(--fb-font-size-xs);
+  font-weight: 600;
+  color: var(--fb-text);
+}
+
+.tooltipRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fb-space-md);
+  font-size: var(--fb-font-size-xs);
+  color: var(--fb-text-muted);
+}
+
+.tooltipLabel {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+}

@@ -1,0 +1,28 @@
+.header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--fb-space-lg);
+  height: 100%;
+  padding: 0 var(--fb-space-lg);
+  background-color: var(--fb-surface);
+  border-bottom: 1px solid var(--fb-border);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: var(--fb-space-xs);
+  font-size: var(--fb-font-size-lg);
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--fb-text);
+}
+
+.brandMark {
+  color: var(--fb-brand);
+}
+
+.main {
+  background-color: var(--fb-body);
+}

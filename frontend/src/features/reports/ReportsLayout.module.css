@@ -1,0 +1,9 @@
+.subnav {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+  padding: 0.25rem;
+  background-color: var(--fb-surface-sunken);
+  border: 1px solid var(--fb-border);
+  border-radius: var(--fb-radius-md);
+}

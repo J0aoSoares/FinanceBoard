@@ -1,0 +1,14 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--fb-space-md);
+  padding: var(--fb-space-md) var(--fb-space-lg) var(--fb-space-lg);
+  max-width: 100%;
+}
+
+.heading {
+  font-size: var(--fb-font-size-xl);
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  color: var(--fb-text);
+}
