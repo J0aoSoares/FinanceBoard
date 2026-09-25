@@ -34,6 +34,29 @@ export function subtractMoney(minuend: Money, subtrahend: Money): Money {
   return fromCents(toCents(minuend) - toCents(subtrahend));
 }
 
+export function splitMoney(total: Money, parts: number): Money[] {
+  if (parts <= 0) {
+    return [];
+  }
+  const cents = toCents(total);
+  const base = Math.floor(cents / parts);
+  const remainder = cents - base * parts;
+  return Array.from({ length: parts }, (_, index) =>
+    fromCents(index === 0 ? base + remainder : base),
+  );
+}
+
+export function netOfDeductions(
+  gross: Money,
+  deductions: Money[],
+): Money | null {
+  if (!isCanonicalMoney(gross) || !deductions.every(isCanonicalMoney)) {
+    return null;
+  }
+  const net = toCents(gross) - toCents(sumMoney(deductions));
+  return net > 0 ? fromCents(net) : null;
+}
+
 export function compareMoney(left: Money, right: Money): number {
   return toCents(left) - toCents(right);
 }

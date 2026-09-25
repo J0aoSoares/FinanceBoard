@@ -10,6 +10,7 @@ import { CompaniesPage } from './features/companies/CompaniesPage';
 import { InvoiceDetailPage } from './features/invoices/InvoiceDetailPage';
 import { InvoicesPage } from './features/invoices/InvoicesPage';
 import { ProjectsPage } from './features/projects/ProjectsPage';
+import { ProjectDetailPage } from './features/projects/ProjectDetailPage';
 import { CashflowReportPage } from './features/reports/CashflowReportPage';
 import { ProjectCostsReportPage } from './features/reports/ProjectCostsReportPage';
 import { ReportsLayout } from './features/reports/ReportsLayout';
@@ -41,6 +42,7 @@ export function App() {
         <Route element={<SettingsLayout />}>
           <Route path="/companies" element={<CompaniesPage />} />
           <Route path="/projects" element={<ProjectsPage />} />
+          <Route path="/projects/:id" element={<ProjectDetailPage />} />
           <Route path="/suppliers" element={<SuppliersPage />} />
           <Route path="/categories" element={<CategoriesPage />} />
           <Route element={<RequireAdmin />}>

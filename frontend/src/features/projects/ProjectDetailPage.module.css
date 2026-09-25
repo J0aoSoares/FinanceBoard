@@ -1,0 +1,47 @@
+.header {
+  padding: var(--fb-space-md);
+  background-color: var(--fb-surface);
+  border: 1px solid var(--fb-border);
+  border-radius: var(--fb-radius-lg);
+  box-shadow: var(--fb-shadow-xs);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.125rem;
+}
+
+.label {
+  font-size: var(--fb-font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fb-text-muted);
+}
+
+.value {
+  font-size: var(--fb-font-size-md);
+  color: var(--fb-text);
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: var(--fb-space-md);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: var(--fb-space-md);
+  background-color: var(--fb-surface);
+  border: 1px solid var(--fb-border);
+  border-radius: var(--fb-radius-lg);
+  box-shadow: var(--fb-shadow-xs);
+}
+
+.hint {
+  font-size: var(--fb-font-size-xs);
+  color: var(--fb-text-muted);
+}

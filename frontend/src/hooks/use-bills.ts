@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createBill,
+  createInstallments,
   deleteBill,
+  deleteBillGroup,
   listBills,
   payBill,
   reversePayment,
@@ -10,6 +12,7 @@ import {
 import type {
   BillFilters,
   CreateBillInput,
+  CreateInstallmentsInput,
   UpdateBillInput,
 } from '../api/types';
 import { notifyApiError, notifySuccess } from '../lib/notify';
@@ -43,6 +46,20 @@ export const useCreateBill = () =>
     (input: CreateBillInput) => createBill(input),
     'Conta cadastrada.',
     'Não foi possível cadastrar a conta',
+  );
+
+export const useCreateInstallments = () =>
+  useBillMutation(
+    (input: CreateInstallmentsInput) => createInstallments(input),
+    'Boletos cadastrados.',
+    'Não foi possível cadastrar os boletos',
+  );
+
+export const useDeleteBillGroup = () =>
+  useBillMutation(
+    (groupId: string) => deleteBillGroup(groupId),
+    'Grupo de boletos removido.',
+    'Não foi possível remover o grupo de boletos',
   );
 
 export const useUpdateBill = () =>

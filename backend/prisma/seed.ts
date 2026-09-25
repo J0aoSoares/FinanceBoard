@@ -1,5 +1,6 @@
 import {
   PaymentStatus,
+  Prisma,
   PrismaClient,
   ProjectStatus,
   TaxType,
@@ -64,28 +65,30 @@ async function seedAdminUser() {
 }
 
 type SeedBill = {
-  documentNumber: string;
-  grossAmount: string;
-  netAmount: string;
+  description: string;
+  amount: string;
   issueDate: string;
   dueDate: string;
   paymentDate?: string;
+  digitableLine?: string;
   companyId: string;
   projectId: string | null;
   categoryId: string;
   supplierId: string;
-  withholdings?: { type: TaxType; amount: string }[];
 };
 
 type SeedReceivable = {
+  number: string;
   description: string;
   clientName: string;
-  amount: string;
+  grossAmount: string;
+  withholdings: { type: TaxType; amount: string }[];
+  competence: string;
   issueDate: string;
   dueDate: string;
   receiptDate?: string;
   companyId: string;
-  projectId: string | null;
+  projectId: string;
 };
 
 const COMPANIES = [
@@ -145,9 +148,6 @@ const PROJECTS = [
 ];
 
 async function main() {
-  // O usuário ADMIN é garantido antes de qualquer coisa: numa base que já tem
-  // lançamentos, o seed de exemplo não roda, e sem isto não haveria como criar
-  // o primeiro acesso sem SQL manual. O upsert torna a chamada idempotente.
   const adminEmail = await seedAdminUser();
   console.log(`Usuário ADMIN disponível: ${adminEmail}`);
 
@@ -158,8 +158,6 @@ async function main() {
     return;
   }
 
-  // Num banco vazio de PRODUÇÃO a base de exemplo (CNPJs, obras e contas
-  // fictícias) não pode entrar. Só em desenvolvimento, com opt-in explícito.
   if (process.env.SEED_SAMPLE_DATA !== 'true') {
     console.log(
       'Banco vazio e SEED_SAMPLE_DATA != "true": base de exemplo NÃO criada. Só o ADMIN foi garantido.',
@@ -220,9 +218,8 @@ async function main() {
 
   const paidBills: SeedBill[] = [
     {
-      documentNumber: 'NF-1042',
-      grossAmount: '8450.00',
-      netAmount: '8450.00',
+      description: 'Diesel S10 - frota Vale Verde',
+      amount: '8450.00',
       issueDate: '2026-05-08',
       dueDate: '2026-06-07',
       paymentDate: '2026-06-05',
@@ -232,22 +229,19 @@ async function main() {
       supplierId: supplier('Posto Rodoviário Central'),
     },
     {
-      documentNumber: 'NF-1088',
-      grossAmount: '12000.00',
-      netAmount: '10680.00',
+      description: 'Revisão de motoniveladora',
+      amount: '10680.00',
       issueDate: '2026-05-20',
       dueDate: '2026-06-20',
       paymentDate: '2026-06-18',
       companyId: terraplenagem.id,
       projectId: rodovia,
-      categoryId: category('Mão de Obra Terceirizada'),
+      categoryId: category('Manutenção de Equipamentos'),
       supplierId: supplier('Oficina Mecânica Pesada'),
-      withholdings: [{ type: TaxType.INSS, amount: '1320.00' }],
     },
     {
-      documentNumber: 'NF-2201',
-      grossAmount: '6300.00',
-      netAmount: '6300.00',
+      description: 'Frete de brita - junho',
+      amount: '6300.00',
       issueDate: '2026-06-03',
       dueDate: '2026-07-03',
       paymentDate: '2026-07-02',
@@ -257,9 +251,8 @@ async function main() {
       supplierId: supplier('Transportadora Parceira'),
     },
     {
-      documentNumber: 'NF-2245',
-      grossAmount: '4200.00',
-      netAmount: '4074.00',
+      description: 'Honorários contábeis - junho',
+      amount: '4074.00',
       issueDate: '2026-06-25',
       dueDate: '2026-07-25',
       paymentDate: '2026-07-24',
@@ -267,15 +260,13 @@ async function main() {
       projectId: null,
       categoryId: category('Despesas Administrativas'),
       supplierId: supplier('Escritório Contábil Associados'),
-      withholdings: [{ type: TaxType.ISS, amount: '126.00' }],
     },
   ];
 
   const overdueBills: SeedBill[] = [
     {
-      documentNumber: 'NF-1130',
-      grossAmount: '3750.00',
-      netAmount: '3750.00',
+      description: 'Filtros e óleo hidráulico',
+      amount: '3750.00',
       issueDate: '2026-06-15',
       dueDate: '2026-07-15',
       companyId: terraplenagem.id,
@@ -284,11 +275,11 @@ async function main() {
       supplierId: supplier('Auto Peças Diesel'),
     },
     {
-      documentNumber: 'NF-2310',
-      grossAmount: '9800.00',
-      netAmount: '9800.00',
+      description: 'Pneus para caminhões basculantes',
+      amount: '9800.00',
       issueDate: '2026-07-02',
       dueDate: '2026-07-30',
+      digitableLine: '10499876524321000001423456789017115230000980000',
       companyId: transporte.id,
       projectId: agregados,
       categoryId: category('Pneus'),
@@ -298,48 +289,43 @@ async function main() {
 
   const pendingBills: SeedBill[] = [
     {
-      documentNumber: 'NF-1205',
-      grossAmount: '15400.00',
-      netAmount: '15400.00',
+      description: 'Locação de escavadeira - agosto',
+      amount: '15400.00',
       issueDate: '2026-07-18',
       dueDate: '2026-08-18',
+      digitableLine: '23791234540000000000012345670009115420001540000',
       companyId: terraplenagem.id,
       projectId: rodovia,
       categoryId: category('Locação de Equipamentos'),
       supplierId: supplier('Locadora de Máquinas Sul'),
     },
     {
-      documentNumber: 'NF-1233',
-      grossAmount: '5600.00',
-      netAmount: '5600.00',
+      description: 'Diesel S10 - frota Vale Verde',
+      amount: '5600.00',
       issueDate: '2026-07-28',
       dueDate: '2026-08-27',
+      digitableLine: '00190000090123456789701234567897715510000560000',
       companyId: terraplenagem.id,
       projectId: valeVerde,
       categoryId: category('Combustível'),
       supplierId: supplier('Posto Rodoviário Central'),
     },
     {
-      documentNumber: 'NF-2388',
-      grossAmount: '7200.00',
-      netAmount: '6552.00',
+      description: 'Manutenção de caminhões - agosto',
+      amount: '6552.00',
       issueDate: '2026-08-01',
       dueDate: '2026-09-01',
       companyId: transporte.id,
       projectId: agregados,
       categoryId: category('Manutenção de Equipamentos'),
       supplierId: supplier('Oficina Mecânica Pesada'),
-      withholdings: [
-        { type: TaxType.INSS, amount: '432.00' },
-        { type: TaxType.ISS, amount: '216.00' },
-      ],
     },
     {
-      documentNumber: 'NF-1250',
-      grossAmount: '2900.00',
-      netAmount: '2900.00',
+      description: 'Seguro da frota - setembro',
+      amount: '2900.00',
       issueDate: '2026-08-03',
       dueDate: '2026-09-10',
+      digitableLine: '34191570070012345000911223344000815650000290000',
       companyId: terraplenagem.id,
       projectId: null,
       categoryId: category('Seguros'),
@@ -349,9 +335,8 @@ async function main() {
 
   const invoicedBills: SeedBill[] = [
     {
-      documentNumber: 'NF-1301',
-      grossAmount: '4800.00',
-      netAmount: '4800.00',
+      description: 'Locação de rolo compactador - junho',
+      amount: '4800.00',
       issueDate: '2026-06-10',
       dueDate: '2026-07-10',
       companyId: terraplenagem.id,
@@ -360,9 +345,8 @@ async function main() {
       supplierId: supplier('Locadora de Máquinas Sul'),
     },
     {
-      documentNumber: 'NF-1302',
-      grossAmount: '5200.00',
-      netAmount: '5200.00',
+      description: 'Locação de rolo compactador - julho',
+      amount: '5200.00',
       issueDate: '2026-07-12',
       dueDate: '2026-08-12',
       companyId: terraplenagem.id,
@@ -371,9 +355,8 @@ async function main() {
       supplierId: supplier('Locadora de Máquinas Sul'),
     },
     {
-      documentNumber: 'NF-1303',
-      grossAmount: '3100.00',
-      netAmount: '3100.00',
+      description: 'Locação de rolo compactador - agosto',
+      amount: '3100.00',
       issueDate: '2026-08-02',
       dueDate: '2026-09-02',
       companyId: terraplenagem.id,
@@ -384,18 +367,21 @@ async function main() {
   ];
 
   async function createBill(data: SeedBill, invoiceId?: string) {
-    const { withholdings, paymentDate, ...rest } = data;
+    const { amount, paymentDate, digitableLine, ...rest } = data;
 
     return prisma.bill.create({
       data: {
         ...rest,
+        documentNumber: rest.description,
+        grossAmount: amount,
+        netAmount: amount,
+        digitableLine: digitableLine ?? null,
         issueDate: new Date(rest.issueDate),
         dueDate: new Date(rest.dueDate),
         paymentDate: paymentDate ? new Date(paymentDate) : null,
         status: paymentDate ? PaymentStatus.PAID : PaymentStatus.PENDING,
-        hasTaxWithholding: Boolean(withholdings?.length),
+        hasTaxWithholding: false,
         invoiceId: invoiceId ?? null,
-        taxWithholdings: withholdings ? { create: withholdings } : undefined,
       },
     });
   }
@@ -416,11 +402,59 @@ async function main() {
     await createBill(bill, invoice.id);
   }
 
-  const receivables: SeedReceivable[] = [
+  const installmentLines = [
+    '03395550050000000000000000000000114470000480000',
+    '03395550050000000000000000000117514780000480000',
+    '03395550050000000000000000000224215080000480000',
+    '03395550050000000000000000000331715390000480000',
+    '03395550050000000000000000000448115700000480000',
+    '03395550050000000000000000000554916000000480000',
+    '03395550050000000000000000000661316310000480000',
+    '03395550050000000000000000000778216610000480000',
+    '03395550050000000000000000000885716920000480000',
+    '03395550050000000000000000000992117230000480000',
+  ];
+  const installmentDescription = 'Rompedor hidráulico para escavadeira';
+  const group = await prisma.billGroup.create({ data: {} });
+  for (const [index, digitableLine] of installmentLines.entries()) {
+    const monthIndex = 4 + index;
+    const year = 2026 + Math.floor(monthIndex / 12);
+    const month = String((monthIndex % 12) + 1).padStart(2, '0');
+    const label = String.fromCharCode(65 + index);
+    const paid = index < 4;
+    await prisma.bill.create({
+      data: {
+        documentNumber: `${installmentDescription} · ${label}`,
+        description: installmentDescription,
+        digitableLine,
+        installmentLabel: label,
+        installmentNumber: index + 1,
+        grossAmount: '4800.00',
+        netAmount: '4800.00',
+        issueDate: new Date('2026-04-20'),
+        dueDate: new Date(`${year}-${month}-15`),
+        paymentDate: paid ? new Date(`${year}-${month}-14`) : null,
+        status: paid ? PaymentStatus.PAID : PaymentStatus.PENDING,
+        companyId: terraplenagem.id,
+        projectId: valeVerde,
+        categoryId: category('Peças e Insumos'),
+        supplierId: supplier('Auto Peças Diesel'),
+        groupId: group.id,
+      },
+    });
+  }
+
+  const serviceInvoices: SeedReceivable[] = [
     {
+      number: 'NFS-0101',
       description: 'Medição 03 - Loteamento Vale Verde',
       clientName: 'Construtora Vale Verde',
-      amount: '48000.00',
+      grossAmount: '48000.00',
+      withholdings: [
+        { type: TaxType.INSS, amount: '5280.00' },
+        { type: TaxType.ISS, amount: '2400.00' },
+      ],
+      competence: '2026-05',
       issueDate: '2026-05-30',
       dueDate: '2026-06-30',
       receiptDate: '2026-06-28',
@@ -428,9 +462,15 @@ async function main() {
       projectId: valeVerde,
     },
     {
+      number: 'NFS-0102',
       description: 'Medição 01 - Rodovia Municipal',
       clientName: 'Prefeitura Municipal',
-      amount: '65000.00',
+      grossAmount: '65000.00',
+      withholdings: [
+        { type: TaxType.ISS, amount: '3250.00' },
+        { type: TaxType.IRRF, amount: '975.00' },
+      ],
+      competence: '2026-06',
       issueDate: '2026-06-28',
       dueDate: '2026-07-28',
       receiptDate: '2026-07-30',
@@ -438,43 +478,67 @@ async function main() {
       projectId: rodovia,
     },
     {
+      number: 'NFS-0201',
       description: 'Transporte de agregados - julho',
       clientName: 'Mineradora Pedra Branca',
-      amount: '32500.00',
+      grossAmount: '32500.00',
+      withholdings: [{ type: TaxType.INSS, amount: '3575.00' }],
+      competence: '2026-07',
       issueDate: '2026-07-31',
       dueDate: '2026-08-30',
       companyId: transporte.id,
       projectId: agregados,
     },
     {
+      number: 'NFS-0103',
       description: 'Medição 04 - Loteamento Vale Verde',
       clientName: 'Construtora Vale Verde',
-      amount: '51200.00',
+      grossAmount: '51200.00',
+      withholdings: [
+        { type: TaxType.INSS, amount: '5632.00' },
+        { type: TaxType.ISS, amount: '2560.00' },
+      ],
+      competence: '2026-07',
       issueDate: '2026-08-01',
       dueDate: '2026-09-05',
       companyId: terraplenagem.id,
       projectId: valeVerde,
     },
     {
+      number: 'NFS-0202',
       description: 'Locação de caminhão - junho',
       clientName: 'Indústria Metalúrgica Norte',
-      amount: '18000.00',
+      grossAmount: '18000.00',
+      withholdings: [],
+      competence: '2026-06',
       issueDate: '2026-06-20',
       dueDate: '2026-07-20',
       companyId: transporte.id,
-      projectId: null,
+      projectId: galpao,
     },
   ];
 
-  for (const receivable of receivables) {
-    const { receiptDate, ...rest } = receivable;
+  for (const serviceInvoice of serviceInvoices) {
+    const { receiptDate, withholdings, competence, grossAmount, ...rest } =
+      serviceInvoice;
+    const netAmount = withholdings
+      .reduce(
+        (acc, withholding) => acc.minus(withholding.amount),
+        new Prisma.Decimal(grossAmount),
+      )
+      .toFixed(2);
     await prisma.receivable.create({
       data: {
         ...rest,
+        grossAmount,
+        netAmount,
+        amount: netAmount,
+        competence: new Date(`${competence}-01`),
         issueDate: new Date(rest.issueDate),
         dueDate: new Date(rest.dueDate),
         receiptDate: receiptDate ? new Date(receiptDate) : null,
         status: receiptDate ? PaymentStatus.PAID : PaymentStatus.PENDING,
+        withholdings: { create: withholdings },
       },
     });
   }
@@ -485,9 +549,11 @@ async function main() {
     obras: await prisma.project.count(),
     categorias: await prisma.category.count(),
     fornecedores: await prisma.supplier.count(),
-    contas: await prisma.bill.count(),
+    boletos: await prisma.bill.count(),
+    parcelamentos: await prisma.billGroup.count(),
     faturas: await prisma.invoice.count(),
-    recebíveis: await prisma.receivable.count(),
+    notasDeServiço: await prisma.receivable.count(),
+    retençõesSofridas: await prisma.receivableWithholding.count(),
   };
 
   console.log('Base de exemplo criada:');

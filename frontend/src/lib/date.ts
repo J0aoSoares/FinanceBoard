@@ -144,6 +144,25 @@ export function parseTypedDate(text: string): IsoDate | null {
   return `${buildMonth(year, monthNumber)}-${String(day).padStart(2, '0')}`;
 }
 
+export function addMonthsClamped(date: IsoDate, months: number): IsoDate {
+  const [year, monthNumber, day] = date.split('-').map(Number);
+  const index = year * 12 + (monthNumber - 1) + months;
+  const targetYear = Math.floor(index / 12);
+  const targetMonth = (index % 12) + 1;
+  const targetDay = Math.min(day, daysInMonth(targetYear, targetMonth));
+  return `${buildMonth(targetYear, targetMonth)}-${String(targetDay).padStart(2, '0')}`;
+}
+
+export function monthlyDueDates(
+  firstDueDate: IsoDate,
+  count: number,
+  intervalMonths: number,
+): IsoDate[] {
+  return Array.from({ length: count }, (_, index) =>
+    addMonthsClamped(firstDueDate, index * intervalMonths),
+  );
+}
+
 export function parseFormattedDate(text: string): IsoDate | null {
   return FORMATTED_DATE.test(text.trim()) ? parseTypedDate(text) : null;
 }

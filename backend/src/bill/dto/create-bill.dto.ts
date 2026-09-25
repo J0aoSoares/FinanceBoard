@@ -1,51 +1,28 @@
-import { TaxType } from '@prisma/client';
-import { Type } from 'class-transformer';
+import { Transform } from 'class-transformer';
 import {
-  IsArray,
   IsDateString,
-  IsEnum,
   IsNotEmpty,
   IsOptional,
   IsString,
   Matches,
-  ValidateNested,
 } from 'class-validator';
 
-export class BillWithholdingDto {
-  @IsEnum(TaxType, {
-    message: 'Tipo de retenção deve ser INSS, ISS, IRRF ou PIS_COFINS_CSLL',
-  })
-  type!: TaxType;
+export const trimmed = ({ value }: { value: unknown }) =>
+  typeof value === 'string' ? value.trim() : value;
 
-  @Matches(/^\d+(\.\d{1,2})?$/, {
-    message:
-      'Valor da retenção deve ser um número decimal com até 2 casas, ex: "150.00"',
-  })
-  amount!: string;
-}
+export const MONEY_PATTERN = /^\d+(\.\d{1,2})?$/;
 
-export class CreateBillDto {
-  @IsString({ message: 'Número do documento deve ser um texto' })
-  @IsNotEmpty({ message: 'Número do documento é obrigatório' })
-  documentNumber!: string;
-
-  @Matches(/^\d+(\.\d{1,2})?$/, {
-    message:
-      'Valor bruto deve ser um número decimal com até 2 casas, ex: "1234.56"',
-  })
-  grossAmount!: string;
+export class BillFieldsDto {
+  @Transform(trimmed)
+  @IsString({ message: 'Descrição deve ser um texto' })
+  @IsNotEmpty({ message: 'Descrição é obrigatória' })
+  description!: string;
 
   @IsDateString(
     {},
-    { message: 'Data de emissão deve estar no formato aaaa-mm-dd' },
+    { message: 'Data da compra deve estar no formato aaaa-mm-dd' },
   )
   issueDate!: string;
-
-  @IsDateString(
-    {},
-    { message: 'Data de vencimento deve estar no formato aaaa-mm-dd' },
-  )
-  dueDate!: string;
 
   @IsString({ message: 'Empresa deve ser um identificador válido' })
   @IsNotEmpty({ message: 'Empresa é obrigatória' })
@@ -62,10 +39,21 @@ export class CreateBillDto {
   @IsString({ message: 'Fornecedor deve ser um identificador válido' })
   @IsNotEmpty({ message: 'Fornecedor é obrigatório' })
   supplierId!: string;
+}
+
+export class CreateBillDto extends BillFieldsDto {
+  @Matches(MONEY_PATTERN, {
+    message: 'Valor deve ser um número decimal com até 2 casas, ex: "1234.56"',
+  })
+  amount!: string;
+
+  @IsDateString(
+    {},
+    { message: 'Data de vencimento deve estar no formato aaaa-mm-dd' },
+  )
+  dueDate!: string;
 
   @IsOptional()
-  @IsArray({ message: 'Retenções devem ser uma lista' })
-  @ValidateNested({ each: true })
-  @Type(() => BillWithholdingDto)
-  withholdings?: BillWithholdingDto[];
+  @IsString({ message: 'Linha digitável deve ser um texto' })
+  digitableLine?: string | null;
 }

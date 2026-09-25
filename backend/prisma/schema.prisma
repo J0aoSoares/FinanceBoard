@@ -95,9 +95,22 @@ model Invoice {
   @@map("invoices")
 }
 
+model BillGroup {
+  id        String   @id @default(cuid())
+  createdAt DateTime @default(now())
+
+  bills Bill[]
+
+  @@map("bill_groups")
+}
+
 model Bill {
   id                String        @id @default(cuid())
   documentNumber    String
+  description       String
+  digitableLine     String?
+  installmentLabel  String?
+  installmentNumber Int?
   grossAmount       Decimal       @db.Decimal(12, 2)
   netAmount         Decimal       @db.Decimal(12, 2)
   issueDate         DateTime
@@ -111,18 +124,21 @@ model Bill {
   categoryId String
   supplierId String
   invoiceId  String?
+  groupId    String?
 
-  company  Company  @relation(fields: [companyId], references: [id])
-  project  Project? @relation(fields: [projectId], references: [id])
-  category Category @relation(fields: [categoryId], references: [id])
-  supplier Supplier @relation(fields: [supplierId], references: [id])
-  invoice  Invoice? @relation(fields: [invoiceId], references: [id])
+  company  Company    @relation(fields: [companyId], references: [id])
+  project  Project?   @relation(fields: [projectId], references: [id])
+  category Category   @relation(fields: [categoryId], references: [id])
+  supplier Supplier   @relation(fields: [supplierId], references: [id])
+  invoice  Invoice?   @relation(fields: [invoiceId], references: [id])
+  group    BillGroup? @relation(fields: [groupId], references: [id])
 
   taxWithholdings TaxWithholding[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([groupId, installmentLabel])
   @@index([companyId, issueDate])
   @@index([companyId, paymentDate])
   @@index([dueDate])
@@ -149,9 +165,13 @@ model TaxWithholding {
 
 model Receivable {
   id          String        @id @default(cuid())
+  number      String?
   description String
   clientName  String
   amount      Decimal       @db.Decimal(12, 2)
+  grossAmount Decimal       @db.Decimal(12, 2)
+  netAmount   Decimal       @db.Decimal(12, 2)
+  competence  DateTime
   issueDate   DateTime
   dueDate     DateTime
   receiptDate DateTime?
@@ -163,13 +183,31 @@ model Receivable {
   company Company  @relation(fields: [companyId], references: [id])
   project Project? @relation(fields: [projectId], references: [id])
 
+  withholdings ReceivableWithholding[]
+
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
+  @@unique([companyId, number])
   @@index([companyId, issueDate])
   @@index([companyId, receiptDate])
+  @@index([companyId, competence])
   @@index([projectId])
   @@map("receivables")
+}
+
+model ReceivableWithholding {
+  id           String  @id @default(cuid())
+  receivableId String
+  type         TaxType
+  amount       Decimal @db.Decimal(12, 2)
+
+  receivable Receivable @relation(fields: [receivableId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@unique([receivableId, type])
+  @@map("receivable_withholdings")
 }
 
 enum UserRole {

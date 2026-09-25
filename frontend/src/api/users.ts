@@ -17,7 +17,6 @@ export const createUser = (input: CreateUserInput) =>
 export const updateUser = (id: string, input: UpdateUserInput) =>
   request<User>(`/users/${id}`, { method: 'PATCH', body: input });
 
-/** A API desativa o usuário; nada é apagado. */
 export const deactivateUser = (id: string) =>
   request<User>(`/users/${id}`, { method: 'DELETE' });
 

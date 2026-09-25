@@ -5,6 +5,7 @@ import { MoneyText } from '../../components/display/MoneyText';
 import { usePayBill } from '../../hooks/use-bills';
 import { todayIsoDate } from '../../lib/date';
 import type { Bill } from '../../api/types';
+import { billLabel } from './bill-form';
 
 interface PaymentModalProps {
   bill: Bill;
@@ -30,10 +31,10 @@ export function PaymentModal({ bill, onClose }: PaymentModalProps) {
       <Stack gap="md">
         <Stack gap={2}>
           <Text size="sm" fw={500}>
-            {bill.documentNumber} — {bill.supplier.name}
+            {billLabel(bill)} — {bill.supplier.name}
           </Text>
           <Text size="xs" c="dimmed">
-            Valor líquido a pagar
+            Valor a pagar
           </Text>
           <MoneyText value={bill.netAmount} strong withSymbol />
         </Stack>

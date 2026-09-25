@@ -1,5 +1,8 @@
 import { Prisma } from '@prisma/client';
-import { CashflowRegime } from '../bill/dto/list-bills-query.dto';
+import {
+  BillDateBasis,
+  CashflowRegime,
+} from '../bill/dto/list-bills-query.dto';
 
 type BillPeriodSource = {
   issueDate: Date;
@@ -28,6 +31,24 @@ export function billPeriodWhere(
       { invoiceId: null, issueDate: range },
       { invoice: { dueDate: range } },
     ],
+  };
+}
+
+export function billDateBasisWhere(
+  start: Date,
+  end: Date,
+  basis: BillDateBasis,
+): Prisma.BillWhereInput {
+  const range = { gte: start, lt: end };
+
+  if (basis === BillDateBasis.ISSUE) {
+    return { issueDate: range };
+  }
+  if (basis === BillDateBasis.PAYMENT) {
+    return billPeriodWhere(start, end, CashflowRegime.CASH);
+  }
+  return {
+    OR: [{ invoiceId: null, dueDate: range }, { invoice: { dueDate: range } }],
   };
 }
 

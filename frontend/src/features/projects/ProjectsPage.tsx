@@ -1,4 +1,13 @@
-import { Badge, Button, Group, Select, Stack, Text } from '@mantine/core';
+import {
+  Anchor,
+  Badge,
+  Button,
+  Group,
+  Select,
+  Stack,
+  Text,
+} from '@mantine/core';
+import { Link } from 'react-router-dom';
 import { modals } from '@mantine/modals';
 import { IconPlus } from '@tabler/icons-react';
 import { useState } from 'react';
@@ -43,8 +52,8 @@ export function ProjectsPage() {
       children: (
         <Text size="sm">
           A obra <strong>{project.name}</strong> será removida. Se houver contas
-          ou recebíveis vinculados, a API vai recusar a exclusão — nesse caso,
-          encerre a obra em vez de removê-la.
+          ou notas de serviço vinculadas, a API vai recusar a exclusão — nesse
+          caso, encerre a obra em vez de removê-la.
         </Text>
       ),
       labels: { confirm: 'Excluir', cancel: 'Cancelar' },
@@ -53,7 +62,15 @@ export function ProjectsPage() {
     });
 
   const columns: DataTableColumn<Project>[] = [
-    { key: 'name', header: 'Obra', render: (project) => project.name },
+    {
+      key: 'name',
+      header: 'Obra',
+      render: (project) => (
+        <Anchor component={Link} to={`/projects/${project.id}`} fw={500}>
+          {project.name}
+        </Anchor>
+      ),
+    },
     {
       key: 'clientName',
       header: 'Cliente',

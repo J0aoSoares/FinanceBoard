@@ -28,11 +28,7 @@ export function ReceivableRowActions({
   return (
     <Menu position="bottom-end" withinPortal shadow="md">
       <Menu.Target>
-        <ActionIcon
-          variant="subtle"
-          color="gray"
-          aria-label="Ações do recebível"
-        >
+        <ActionIcon variant="subtle" color="gray" aria-label="Ações da nota">
           <IconDotsVertical size={16} />
         </ActionIcon>
       </Menu.Target>
@@ -57,7 +53,7 @@ export function ReceivableRowActions({
         <Menu.Divider />
 
         <Tooltip
-          label="Recebível já recebido não pode ser editado; estorne antes"
+          label="Nota já recebida não pode ser editada; estorne antes"
           disabled={!received}
           withArrow
         >

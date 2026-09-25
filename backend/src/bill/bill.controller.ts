@@ -12,6 +12,7 @@ import {
 } from '@nestjs/common';
 import { BillService } from './bill.service';
 import { CreateBillDto } from './dto/create-bill.dto';
+import { CreateInstallmentsDto } from './dto/create-installments.dto';
 import { ListBillsQueryDto } from './dto/list-bills-query.dto';
 import { PayBillDto } from './dto/pay-bill.dto';
 import { UpdateBillDto } from './dto/update-bill.dto';
@@ -23,6 +24,17 @@ export class BillController {
   @Post()
   create(@Body() dto: CreateBillDto) {
     return this.billService.create(dto);
+  }
+
+  @Post('installments')
+  createInstallments(@Body() dto: CreateInstallmentsDto) {
+    return this.billService.createInstallments(dto);
+  }
+
+  @Delete('installments/:groupId')
+  @HttpCode(HttpStatus.NO_CONTENT)
+  removeGroup(@Param('groupId') groupId: string) {
+    return this.billService.removeGroup(groupId);
   }
 
   @Get()

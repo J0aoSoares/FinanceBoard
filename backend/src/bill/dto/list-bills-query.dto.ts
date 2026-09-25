@@ -11,6 +11,12 @@ export enum CashflowRegime {
   CASH = 'cash',
 }
 
+export enum BillDateBasis {
+  ISSUE = 'issue',
+  DUE = 'due',
+  PAYMENT = 'payment',
+}
+
 export class ListBillsQueryDto {
   @IsOptional()
   @IsString({ message: 'Empresa deve ser um identificador válido' })
@@ -43,4 +49,10 @@ export class ListBillsQueryDto {
   @IsOptional()
   @IsEnum(CashflowRegime, { message: 'Regime deve ser accrual ou cash' })
   regime?: CashflowRegime;
+
+  @IsOptional()
+  @IsEnum(BillDateBasis, {
+    message: 'Base de data deve ser issue, due ou payment',
+  })
+  dateBasis?: BillDateBasis;
 }

@@ -1,62 +1,166 @@
 import type {
   Bill,
   CreateBillInput,
-  TaxType,
+  CreateInstallmentsInput,
   UpdateBillInput,
 } from '../../api/types';
-import { apiDate } from '../../lib/date';
+import { apiDate, monthlyDueDates } from '../../lib/date';
+import {
+  digitableLineError,
+  formatDigitableLine,
+  normalizeDigitableLine,
+} from '../../lib/digitable-line';
+import {
+  duplicatedLabels,
+  installmentLabels,
+  type LabelPattern,
+} from '../../lib/installment-labels';
 import {
   compareMoney,
+  formatCurrency,
   isCanonicalMoney,
+  splitMoney,
   subtractMoney,
   sumMoney,
+  type Money,
 } from '../../lib/money';
 
-export interface WithholdingRow {
-  type: TaxType;
-  amount: string;
+export const MIN_INSTALLMENTS = 2;
+export const MAX_INSTALLMENTS = 60;
+
+export interface InstallmentRow {
+  label: string;
+  dueDate: string | null;
+  amount: Money;
+  digitableLine: string;
+}
+
+export interface InstallmentSettings {
+  count: number;
+  labelPattern: LabelPattern;
+  firstDueDate: string | null;
+  intervalMonths: number;
 }
 
 export interface BillFormValues {
-  documentNumber: string;
-  grossAmount: string;
-  issueDate: string | null;
-  dueDate: string | null;
-  companyId: string | null;
-  projectId: string | null;
-  categoryId: string | null;
   supplierId: string | null;
-  withholdings: WithholdingRow[];
+  description: string;
+  categoryId: string | null;
+  projectId: string | null;
+  companyId: string | null;
+  issueDate: string | null;
+  amount: Money;
+  dueDate: string | null;
+  digitableLine: string;
+  split: boolean;
+  settings: InstallmentSettings;
+  installments: InstallmentRow[];
 }
 
 export const emptyBillForm = (companyId?: string): BillFormValues => ({
-  documentNumber: '',
-  grossAmount: '',
-  issueDate: null,
-  dueDate: null,
-  companyId: companyId ?? null,
-  projectId: null,
-  categoryId: null,
   supplierId: null,
-  withholdings: [],
+  description: '',
+  categoryId: null,
+  projectId: null,
+  companyId: companyId ?? null,
+  issueDate: null,
+  amount: '',
+  dueDate: null,
+  digitableLine: '',
+  split: false,
+  settings: {
+    count: 2,
+    labelPattern: 'numeric',
+    firstDueDate: null,
+    intervalMonths: 1,
+  },
+  installments: [],
 });
 
 export const billToFormValues = (bill: Bill): BillFormValues => ({
-  documentNumber: bill.documentNumber,
-  grossAmount: bill.grossAmount,
-  issueDate: apiDate(bill.issueDate),
-  dueDate: apiDate(bill.dueDate),
-  companyId: bill.companyId,
-  projectId: bill.projectId,
-  categoryId: bill.categoryId,
+  ...emptyBillForm(bill.companyId),
   supplierId: bill.supplierId,
-  withholdings: bill.taxWithholdings.map((withholding) => ({
-    type: withholding.type,
-    amount: withholding.amount,
-  })),
+  description: bill.description,
+  categoryId: bill.categoryId,
+  projectId: bill.projectId,
+  issueDate: apiDate(bill.issueDate),
+  amount: bill.netAmount,
+  dueDate: apiDate(bill.dueDate),
+  digitableLine: bill.digitableLine
+    ? formatDigitableLine(bill.digitableLine)
+    : '',
 });
 
-const requiredAmount = (value: string) => {
+export const billLabel = (bill: Bill) =>
+  bill.installmentLabel
+    ? `${bill.description} · boleto ${bill.installmentLabel}`
+    : bill.description;
+
+export const hasLegacyWithholdings = (bill: Bill | null) =>
+  bill !== null && bill.taxWithholdings.length > 0;
+
+const isValidCount = (count: number) =>
+  Number.isInteger(count) &&
+  count >= MIN_INSTALLMENTS &&
+  count <= MAX_INSTALLMENTS;
+
+export function buildInstallmentRows(
+  settings: InstallmentSettings,
+  total: Money,
+  previous: InstallmentRow[],
+): InstallmentRow[] {
+  if (!isValidCount(settings.count)) {
+    return previous;
+  }
+  const labels = installmentLabels(
+    settings.labelPattern,
+    settings.count,
+    previous.map((row) => row.label),
+  );
+  const dueDates = settings.firstDueDate
+    ? monthlyDueDates(
+        settings.firstDueDate,
+        settings.count,
+        Math.max(1, settings.intervalMonths),
+      )
+    : [];
+  const amounts = isCanonicalMoney(total)
+    ? splitMoney(total, settings.count)
+    : [];
+
+  return labels.map((label, index) => ({
+    label,
+    dueDate: dueDates[index] ?? previous[index]?.dueDate ?? null,
+    amount: amounts[index] ?? '',
+    digitableLine: previous[index]?.digitableLine ?? '',
+  }));
+}
+
+export function redistributeAmounts(
+  rows: InstallmentRow[],
+  total: Money,
+): InstallmentRow[] {
+  if (!isCanonicalMoney(total) || rows.length === 0) {
+    return rows;
+  }
+  const amounts = splitMoney(total, rows.length);
+  return rows.map((row, index) => ({ ...row, amount: amounts[index] }));
+}
+
+export function installmentsSum(rows: InstallmentRow[]): Money | null {
+  const amounts = rows.map((row) => row.amount);
+  return amounts.every(isCanonicalMoney) ? sumMoney(amounts) : null;
+}
+
+export function installmentsDifference(values: BillFormValues): Money | null {
+  const sum = installmentsSum(values.installments);
+  if (sum === null || !isCanonicalMoney(values.amount)) {
+    return null;
+  }
+  return subtractMoney(values.amount, sum);
+}
+
+const positiveAmount = (value: string) => {
   if (!isCanonicalMoney(value)) {
     return 'Informe um valor válido';
   }
@@ -66,94 +170,118 @@ const requiredAmount = (value: string) => {
   return null;
 };
 
+const digitableLine = (value: string) =>
+  value.trim() === '' ? null : digitableLineError(value);
+
+const notBeforeIssue = (value: string | null, values: BillFormValues) =>
+  value && values.issueDate && value < values.issueDate
+    ? 'Vencimento não pode ser anterior à data da compra'
+    : null;
+
 export const billFormValidation = {
-  documentNumber: (value: string) =>
-    value.trim() === '' ? 'Número do documento é obrigatório' : null,
-  grossAmount: requiredAmount,
-  issueDate: (value: string | null) =>
-    value ? null : 'Data de emissão é obrigatória',
-  dueDate: (value: string | null, values: BillFormValues) => {
-    if (!value) {
-      return 'Data de vencimento é obrigatória';
-    }
-    if (values.issueDate && value < values.issueDate) {
-      return 'Vencimento não pode ser anterior à emissão';
-    }
-    return null;
-  },
-  companyId: (value: string | null) => (value ? null : 'Empresa é obrigatória'),
-  categoryId: (value: string | null) =>
-    value ? null : 'Categoria é obrigatória',
   supplierId: (value: string | null) =>
     value ? null : 'Fornecedor é obrigatório',
-  withholdings: {
-    amount: (value: string, values: BillFormValues) => {
-      const invalid = requiredAmount(value);
-      if (invalid) {
-        return invalid;
+  description: (value: string) =>
+    value.trim() === '' ? 'Descrição é obrigatória' : null,
+  categoryId: (value: string | null) =>
+    value ? null : 'Categoria é obrigatória',
+  companyId: (value: string | null) => (value ? null : 'Empresa é obrigatória'),
+  issueDate: (value: string | null) =>
+    value ? null : 'Data da compra é obrigatória',
+  amount: (value: string, values: BillFormValues) => {
+    const invalid = positiveAmount(value);
+    if (invalid || !values.split) {
+      return invalid;
+    }
+    const difference = installmentsDifference(values);
+    return difference !== null && compareMoney(difference, '0.00') !== 0
+      ? `A soma dos boletos difere do valor total em ${formatCurrency(difference.replace('-', ''))}`
+      : null;
+  },
+  dueDate: (value: string | null, values: BillFormValues) => {
+    if (values.split) {
+      return null;
+    }
+    return value
+      ? notBeforeIssue(value, values)
+      : 'Data de vencimento é obrigatória';
+  },
+  digitableLine: (value: string, values: BillFormValues) =>
+    values.split ? null : digitableLine(value),
+  settings: {
+    count: (value: number, values: BillFormValues) =>
+      !values.split || isValidCount(value)
+        ? null
+        : `Informe de ${MIN_INSTALLMENTS} a ${MAX_INSTALLMENTS} boletos`,
+    firstDueDate: (value: string | null, values: BillFormValues) =>
+      !values.split || value ? null : 'Primeiro vencimento é obrigatório',
+  },
+  installments: {
+    label: (value: string, values: BillFormValues) => {
+      if (value.trim() === '') {
+        return 'Rótulo obrigatório';
       }
-      if (!isCanonicalMoney(values.grossAmount)) {
-        return null;
-      }
-      const total = sumMoney(
-        values.withholdings
-          .map((row) => row.amount)
-          .filter((amount) => isCanonicalMoney(amount)),
-      );
-      return compareMoney(total, values.grossAmount) >= 0
-        ? 'A soma das retenções deve ser menor que o valor bruto'
+      return duplicatedLabels(values.installments.map((row) => row.label)).has(
+        value.trim().toLocaleUpperCase('pt-BR'),
+      )
+        ? 'Rótulo repetido'
         : null;
     },
+    dueDate: (value: string | null, values: BillFormValues) =>
+      value ? notBeforeIssue(value, values) : 'Vencimento obrigatório',
+    amount: positiveAmount,
+    digitableLine,
   },
 };
 
-export function previewNetAmount(values: BillFormValues): string | null {
-  if (!isCanonicalMoney(values.grossAmount)) {
-    return null;
-  }
-  const amounts = values.withholdings
-    .map((row) => row.amount)
-    .filter((amount) => isCanonicalMoney(amount));
-  if (amounts.length !== values.withholdings.length) {
-    return null;
-  }
-  const total = sumMoney(amounts);
-  return compareMoney(total, values.grossAmount) >= 0
-    ? null
-    : subtractMoney(values.grossAmount, total);
-}
+const optionalDigitableLine = (value: string) =>
+  value.trim() === '' ? undefined : normalizeDigitableLine(value);
 
-export function buildCreatePayload(values: BillFormValues): CreateBillInput {
-  const payload: CreateBillInput = {
-    documentNumber: values.documentNumber.trim(),
-    grossAmount: values.grossAmount,
+function buildFields(values: BillFormValues) {
+  const fields = {
+    description: values.description.trim(),
     issueDate: values.issueDate!,
-    dueDate: values.dueDate!,
     companyId: values.companyId!,
     categoryId: values.categoryId!,
     supplierId: values.supplierId!,
   };
+  return values.projectId ? { ...fields, projectId: values.projectId } : fields;
+}
 
-  if (values.projectId) {
-    payload.projectId = values.projectId;
-  }
-  if (values.withholdings.length > 0) {
-    payload.withholdings = values.withholdings.map((row) => ({
-      type: row.type,
-      amount: row.amount,
-    }));
-  }
-
-  return payload;
+export function buildCreatePayload(values: BillFormValues): CreateBillInput {
+  const payload: CreateBillInput = {
+    ...buildFields(values),
+    amount: values.amount,
+    dueDate: values.dueDate!,
+  };
+  const line = optionalDigitableLine(values.digitableLine);
+  return line ? { ...payload, digitableLine: line } : payload;
 }
 
 export function buildUpdatePayload(values: BillFormValues): UpdateBillInput {
   return {
-    ...buildCreatePayload(values),
+    ...buildFields(values),
+    amount: values.amount,
+    dueDate: values.dueDate!,
     projectId: values.projectId,
-    withholdings: values.withholdings.map((row) => ({
-      type: row.type,
-      amount: row.amount,
-    })),
+    digitableLine: optionalDigitableLine(values.digitableLine) ?? null,
+  };
+}
+
+export function buildInstallmentsPayload(
+  values: BillFormValues,
+): CreateInstallmentsInput {
+  return {
+    ...buildFields(values),
+    totalAmount: values.amount,
+    installments: values.installments.map((row) => {
+      const installment = {
+        label: row.label.trim(),
+        dueDate: row.dueDate!,
+        amount: row.amount,
+      };
+      const line = optionalDigitableLine(row.digitableLine);
+      return line ? { ...installment, digitableLine: line } : installment;
+    }),
   };
 }

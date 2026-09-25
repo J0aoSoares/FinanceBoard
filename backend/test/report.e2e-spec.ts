@@ -8,6 +8,7 @@ import {
   BaseFixtures,
   billPayload,
   createBaseFixtures,
+  createLegacyBill,
   receivablePayload,
 } from './helpers/fixtures';
 
@@ -33,8 +34,8 @@ describe('Relatórios (/reports)', () => {
       .post('/bills')
       .send(
         billPayload(fixtures, {
-          documentNumber: 'NF-AVULSA-PAGA',
-          grossAmount: '1000.00',
+          description: 'NF-AVULSA-PAGA',
+          amount: '1000.00',
           issueDate: '2026-06-05',
           dueDate: '2026-07-05',
         }),
@@ -45,27 +46,22 @@ describe('Relatórios (/reports)', () => {
       .send({ paymentDate: '2026-07-03' })
       .expect(200);
 
-    await server()
-      .post('/bills')
-      .send(
-        billPayload(fixtures, {
-          documentNumber: 'NF-COM-RETENCAO',
-          grossAmount: '2500.00',
-          issueDate: '2026-07-10',
-          dueDate: '2026-08-10',
-          projectId: fixtures.projectB,
-          categoryId: fixtures.categoryAlt,
-          withholdings: [{ type: 'INSS', amount: '250.00' }],
-        }),
-      )
-      .expect(201);
+    await createLegacyBill(context.prisma, fixtures, {
+      documentNumber: 'NF-COM-RETENCAO',
+      grossAmount: '2500.00',
+      issueDate: '2026-07-10',
+      dueDate: '2026-08-10',
+      projectId: fixtures.projectB,
+      categoryId: fixtures.categoryAlt,
+      withholdings: [{ type: 'INSS', amount: '250.00' }],
+    });
 
     await server()
       .post('/bills')
       .send(
         billPayload(fixtures, {
-          documentNumber: 'NF-SEM-OBRA',
-          grossAmount: '500.00',
+          description: 'NF-SEM-OBRA',
+          amount: '500.00',
           issueDate: '2026-06-20',
           dueDate: '2026-07-20',
           companyId: fixtures.companyB,
@@ -78,8 +74,8 @@ describe('Relatórios (/reports)', () => {
       .post('/bills')
       .send(
         billPayload(fixtures, {
-          documentNumber: 'NF-FAT-1',
-          grossAmount: '300.00',
+          description: 'NF-FAT-1',
+          amount: '300.00',
           issueDate: '2026-06-25',
           dueDate: '2026-07-25',
         }),
@@ -89,8 +85,8 @@ describe('Relatórios (/reports)', () => {
       .post('/bills')
       .send(
         billPayload(fixtures, {
-          documentNumber: 'NF-FAT-2',
-          grossAmount: '700.00',
+          description: 'NF-FAT-2',
+          amount: '700.00',
           issueDate: '2026-07-02',
           dueDate: '2026-08-02',
         }),
@@ -112,7 +108,7 @@ describe('Relatórios (/reports)', () => {
       .post('/receivables')
       .send(
         receivablePayload(fixtures, {
-          amount: '5000.00',
+          grossAmount: '5000.00',
           issueDate: '2026-06-01',
           dueDate: '2026-07-01',
         }),

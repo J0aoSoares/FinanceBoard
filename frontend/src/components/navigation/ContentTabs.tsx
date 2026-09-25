@@ -13,7 +13,7 @@ import classes from './ContentTabs.module.css';
 const tabs = [
   { value: '/bills', label: 'Contas a pagar', icon: IconReceipt2 },
   { value: '/invoices', label: 'Faturas', icon: IconFileInvoice },
-  { value: '/receivables', label: 'Contas a receber', icon: IconCoins },
+  { value: '/receivables', label: 'Notas de serviço', icon: IconCoins },
   { value: '/reports', label: 'Relatórios', icon: IconChartBar },
 ];
 

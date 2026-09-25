@@ -76,3 +76,47 @@
   text-align: center;
   color: var(--fb-text-muted);
 }
+
+.center {
+  text-align: center;
+}
+
+.groupRow td {
+  background-color: var(--fb-surface-sunken);
+}
+
+.childRow td {
+  background-color: var(--fb-surface);
+}
+
+.childCell {
+  padding-left: calc(var(--fb-space-md) * 2.5) !important;
+}
+
+.position {
+  font-size: var(--fb-font-size-sm);
+  font-weight: 600;
+  color: var(--fb-text-muted);
+  white-space: nowrap;
+}
+
+.expand {
+  display: flex;
+  gap: var(--fb-space-xs);
+  align-items: flex-start;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: none;
+  border: none;
+}
+
+.progressLabel {
+  display: block;
+  margin-bottom: 0.25rem;
+  font-size: var(--fb-font-size-xs);
+  color: var(--fb-text-muted);
+  white-space: nowrap;
+}

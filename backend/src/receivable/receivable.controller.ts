@@ -14,6 +14,7 @@ import { ReceivableService } from './receivable.service';
 import { CreateReceivableDto } from './dto/create-receivable.dto';
 import { ListReceivablesQueryDto } from './dto/list-receivables-query.dto';
 import { ReceiveReceivableDto } from './dto/receive-receivable.dto';
+import { ReceivableSummaryQueryDto } from './dto/summary-query.dto';
 import { UpdateReceivableDto } from './dto/update-receivable.dto';
 
 @Controller('receivables')
@@ -28,6 +29,11 @@ export class ReceivableController {
   @Get()
   findAll(@Query() query: ListReceivablesQueryDto) {
     return this.receivableService.findAll(query);
+  }
+
+  @Get('summary')
+  summary(@Query() query: ReceivableSummaryQueryDto) {
+    return this.receivableService.summary(query.projectId);
   }
 
   @Get(':id')

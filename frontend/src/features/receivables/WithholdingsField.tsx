@@ -2,11 +2,11 @@ import { ActionIcon, Button, Group, Select, Stack, Text } from '@mantine/core';
 import { IconPlus, IconTrash } from '@tabler/icons-react';
 import { MoneyInput } from '../../components/fields/MoneyInput';
 import { TAX_TYPES, TAX_TYPE_LABELS, type TaxType } from '../../api/types';
-import type { BillFormValues } from './bill-form';
+import type { ReceivableFormValues } from './receivable-form';
 import type { UseFormReturnType } from '@mantine/form';
 
 interface WithholdingsFieldProps {
-  form: UseFormReturnType<BillFormValues>;
+  form: UseFormReturnType<ReceivableFormValues>;
 }
 
 export function WithholdingsField({ form }: WithholdingsFieldProps) {
@@ -18,7 +18,7 @@ export function WithholdingsField({ form }: WithholdingsFieldProps) {
     <Stack gap="xs">
       <Group justify="space-between" align="center">
         <Text size="sm" fw={500}>
-          Retenções
+          Retenções sofridas
         </Text>
         <Button
           size="compact-xs"
@@ -32,7 +32,7 @@ export function WithholdingsField({ form }: WithholdingsFieldProps) {
             })
           }
         >
-          Adicionar
+          Adicionar retenção
         </Button>
       </Group>
 
@@ -45,6 +45,7 @@ export function WithholdingsField({ form }: WithholdingsFieldProps) {
           <Group key={index} gap="xs" align="flex-start" wrap="nowrap">
             <Select
               size="xs"
+              aria-label={`Tipo da retenção ${index + 1}`}
               w={170}
               allowDeselect={false}
               data={TAX_TYPES.filter(
@@ -60,6 +61,7 @@ export function WithholdingsField({ form }: WithholdingsFieldProps) {
             />
             <MoneyInput
               size="xs"
+              aria-label={`Valor da retenção ${TAX_TYPE_LABELS[row.type]}`}
               style={{ flex: 1 }}
               {...form.getInputProps(`withholdings.${index}.amount`)}
             />
@@ -67,7 +69,7 @@ export function WithholdingsField({ form }: WithholdingsFieldProps) {
               size="md"
               variant="subtle"
               color="red"
-              aria-label="Remover retenção"
+              aria-label={`Remover retenção ${TAX_TYPE_LABELS[row.type]}`}
               onClick={() => form.removeListItem('withholdings', index)}
             >
               <IconTrash size={15} />

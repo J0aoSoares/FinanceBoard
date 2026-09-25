@@ -45,9 +45,23 @@ export interface InvoiceSummary {
   status: PaymentStatus;
 }
 
+export interface BillGroupSummary {
+  id: string;
+  position: number;
+  billCount: number;
+  paidCount: number;
+  totalAmount: Money;
+}
+
 export interface Bill {
   id: string;
   documentNumber: string;
+  description: string;
+  digitableLine: string | null;
+  installmentLabel: string | null;
+  installmentNumber: number | null;
+  groupId: string | null;
+  group: BillGroupSummary | null;
   grossAmount: Money;
   netAmount: Money;
   issueDate: string;
@@ -70,26 +84,41 @@ export interface Bill {
   effectiveDueDate: string;
 }
 
-export interface WithholdingInput {
-  type: TaxType;
-  amount: Money;
-}
-
-export interface CreateBillInput {
-  documentNumber: string;
-  grossAmount: Money;
+export interface BillFieldsInput {
+  description: string;
   issueDate: string;
-  dueDate: string;
   companyId: string;
   projectId?: string;
   categoryId: string;
   supplierId: string;
-  withholdings?: WithholdingInput[];
 }
 
-export type UpdateBillInput = Partial<Omit<CreateBillInput, 'projectId'>> & {
+export interface CreateBillInput extends BillFieldsInput {
+  amount: Money;
+  dueDate: string;
+  digitableLine?: string;
+}
+
+export type UpdateBillInput = Partial<
+  Omit<CreateBillInput, 'projectId' | 'digitableLine'>
+> & {
   projectId?: string | null;
+  digitableLine?: string | null;
 };
+
+export interface InstallmentInput {
+  label: string;
+  dueDate: string;
+  amount: Money;
+  digitableLine?: string;
+}
+
+export interface CreateInstallmentsInput extends BillFieldsInput {
+  totalAmount: Money;
+  installments: InstallmentInput[];
+}
+
+export type BillDateBasis = 'issue' | 'due' | 'payment';
 
 export interface BillFilters {
   companyId?: string;
@@ -99,6 +128,7 @@ export interface BillFilters {
   status?: EffectiveStatus;
   month?: string;
   regime?: Regime;
+  dateBasis?: BillDateBasis;
 }
 
 export const TAX_TYPE_LABELS: Record<TaxType, string> = {
@@ -159,11 +189,23 @@ export const PROJECT_STATUS_LABELS: Record<ProjectStatus, string> = {
 
 export const PROJECT_STATUSES: ProjectStatus[] = ['ACTIVE', 'CLOSED'];
 
+export interface ReceivableWithholding {
+  id: string;
+  receivableId: string;
+  type: TaxType;
+  amount: Money;
+}
+
 export interface Receivable {
   id: string;
+  number: string | null;
   description: string;
   clientName: string;
   amount: Money;
+  grossAmount: Money;
+  netAmount: Money;
+  withholdingTotal: Money;
+  competence: string;
   issueDate: string;
   dueDate: string;
   receiptDate: string | null;
@@ -172,24 +214,31 @@ export interface Receivable {
   projectId: string | null;
   company: Company;
   project: Project | null;
+  withholdings: ReceivableWithholding[];
   effectiveStatus: EffectiveStatus;
 }
 
+export interface WithholdingInput {
+  type: TaxType;
+  amount: Money;
+}
+
 export interface CreateReceivableInput {
+  number: string;
   description: string;
   clientName: string;
-  amount: Money;
+  grossAmount: Money;
+  competence: string;
   issueDate: string;
   dueDate: string;
   companyId: string;
-  projectId?: string;
+  projectId: string;
+  withholdings: WithholdingInput[];
 }
 
-export type UpdateReceivableInput = Partial<
-  Omit<CreateReceivableInput, 'projectId'>
-> & {
-  projectId?: string | null;
-};
+export type UpdateReceivableInput = Partial<CreateReceivableInput>;
+
+export type ReceivableDateBasis = 'competence' | 'issue' | 'receipt';
 
 export interface ReceivableFilters {
   companyId?: string;
@@ -197,6 +246,18 @@ export interface ReceivableFilters {
   status?: EffectiveStatus;
   month?: string;
   regime?: Regime;
+  dateBasis?: ReceivableDateBasis;
+}
+
+export interface ProjectBillingSummary {
+  projectId: string;
+  invoiceCount: number;
+  receivedCount: number;
+  grossInvoiced: Money;
+  withholdingTotal: Money;
+  netInvoiced: Money;
+  received: Money;
+  outstanding: Money;
 }
 
 export type InvoiceBill = Omit<

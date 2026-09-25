@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   createReceivable,
   deleteReceivable,
+  getProjectBillingSummary,
   listReceivables,
   registerReceipt,
   removeReceipt,
@@ -19,6 +20,12 @@ export const useReceivables = (filters: ReceivableFilters) =>
     queryKey: ['receivables', filters],
     queryFn: () => listReceivables(filters),
     placeholderData: (previous) => previous,
+  });
+
+export const useProjectBillingSummary = (projectId: string) =>
+  useQuery({
+    queryKey: ['receivables', 'summary', projectId],
+    queryFn: () => getProjectBillingSummary(projectId),
   });
 
 function useReceivableMutation<TVariables, TData>(
@@ -41,23 +48,23 @@ function useReceivableMutation<TVariables, TData>(
 export const useCreateReceivable = () =>
   useReceivableMutation(
     (input: CreateReceivableInput) => createReceivable(input),
-    'Recebível cadastrado.',
-    'Não foi possível cadastrar o recebível',
+    'Nota de serviço cadastrada.',
+    'Não foi possível cadastrar a nota de serviço',
   );
 
 export const useUpdateReceivable = () =>
   useReceivableMutation(
     ({ id, input }: { id: string; input: UpdateReceivableInput }) =>
       updateReceivable(id, input),
-    'Recebível atualizado.',
-    'Não foi possível atualizar o recebível',
+    'Nota de serviço atualizada.',
+    'Não foi possível atualizar a nota de serviço',
   );
 
 export const useDeleteReceivable = () =>
   useReceivableMutation(
     (id: string) => deleteReceivable(id),
-    'Recebível removido.',
-    'Não foi possível remover o recebível',
+    'Nota de serviço removida.',
+    'Não foi possível remover a nota de serviço',
   );
 
 export const useRegisterReceipt = () =>

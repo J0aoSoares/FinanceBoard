@@ -65,7 +65,6 @@ interface RequestOptions {
   method?: string;
   params?: QueryParams;
   body?: unknown;
-  /** Rotas públicas de autenticação: não mandam token nem tentam renovar. */
   skipAuth?: boolean;
 }
 
@@ -128,11 +127,6 @@ async function performRefresh(): Promise<void> {
   setSession(pair);
 }
 
-/**
- * O backend rotaciona o refresh token e revoga a família inteira se um token já
- * usado for apresentado de novo. Duas requisições que tomam 401 ao mesmo tempo
- * não podem, portanto, disparar dois refresh: todas esperam a mesma promise.
- */
 export function ensureRefreshed(): Promise<void> {
   if (!refreshInFlight) {
     refreshInFlight = performRefresh().finally(() => {

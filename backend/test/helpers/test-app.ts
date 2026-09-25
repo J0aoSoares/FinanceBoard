@@ -39,7 +39,7 @@ export async function createTestApp(
 
 export async function resetDatabase(prisma: PrismaService) {
   await prisma.$executeRawUnsafe(
-    'TRUNCATE TABLE tax_withholdings, bills, invoices, receivables, projects, categories, suppliers, companies RESTART IDENTITY CASCADE',
+    'TRUNCATE TABLE tax_withholdings, bills, bill_groups, invoices, receivable_withholdings, receivables, projects, categories, suppliers, companies RESTART IDENTITY CASCADE',
   );
 }
 

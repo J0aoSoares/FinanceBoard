@@ -5,6 +5,7 @@ import { MoneyText } from '../../components/display/MoneyText';
 import { useRegisterReceipt } from '../../hooks/use-receivables';
 import { todayIsoDate } from '../../lib/date';
 import type { Receivable } from '../../api/types';
+import { receivableLabel } from './receivable-form';
 
 interface ReceiptModalProps {
   receivable: Receivable;
@@ -30,13 +31,13 @@ export function ReceiptModal({ receivable, onClose }: ReceiptModalProps) {
       <Stack gap="md">
         <Stack gap={2}>
           <Text size="sm" fw={500}>
-            {receivable.description} — {receivable.clientName}
+            {receivableLabel(receivable)} — {receivable.clientName}
           </Text>
           <Text size="xs" c="dimmed">
-            Valor a receber
+            Valor líquido a receber (bruto menos retenções)
           </Text>
           <MoneyText
-            value={receivable.amount}
+            value={receivable.netAmount}
             tone="inflow"
             strong
             withSymbol

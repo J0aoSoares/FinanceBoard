@@ -31,8 +31,8 @@ export function CompaniesPage() {
       children: (
         <Text size="sm">
           A empresa <strong>{company.legalName}</strong> será removida. Se
-          houver contas, faturas ou recebíveis vinculados, a API vai recusar a
-          exclusão.
+          houver contas, faturas ou notas de serviço vinculadas, a API vai
+          recusar a exclusão.
         </Text>
       ),
       labels: { confirm: 'Excluir', cancel: 'Cancelar' },

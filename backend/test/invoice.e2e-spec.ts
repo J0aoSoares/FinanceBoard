@@ -9,6 +9,7 @@ import {
   BaseFixtures,
   billPayload,
   createBaseFixtures,
+  createLegacyBill,
 } from './helpers/fixtures';
 
 describe('Faturas (/invoices)', () => {
@@ -55,20 +56,20 @@ describe('Faturas (/invoices)', () => {
 
   it('agrupa contas de meses diferentes e soma os totais', async () => {
     const junho = await createBill({
-      documentNumber: 'NF-JUN',
-      grossAmount: '4800.00',
+      description: 'NF-JUN',
+      amount: '4800.00',
       issueDate: '2026-06-10',
       dueDate: '2026-07-10',
     });
     const julho = await createBill({
-      documentNumber: 'NF-JUL',
-      grossAmount: '5200.00',
+      description: 'NF-JUL',
+      amount: '5200.00',
       issueDate: '2026-07-10',
       dueDate: '2026-08-10',
     });
     const agosto = await createBill({
-      documentNumber: 'NF-AGO',
-      grossAmount: '3100.00',
+      description: 'NF-AGO',
+      amount: '3100.00',
       issueDate: '2026-08-05',
       dueDate: '2026-09-05',
     });
@@ -87,7 +88,8 @@ describe('Faturas (/invoices)', () => {
   });
 
   it('soma as retenções das contas no total da fatura', async () => {
-    const bill = await createBill({
+    const bill = await createLegacyBill(context.prisma, fixtures, {
+      documentNumber: 'NF-ANTIGA',
       grossAmount: '10000.00',
       withholdings: [{ type: 'INSS', amount: '1100.00' }],
     });
@@ -184,8 +186,8 @@ describe('Faturas (/invoices)', () => {
 
   describe('pagamento', () => {
     it('paga a fatura e todas as contas na mesma data', async () => {
-      const a = await createBill({ documentNumber: 'NF-A' });
-      const b = await createBill({ documentNumber: 'NF-B' });
+      const a = await createBill({ description: 'NF-A' });
+      const b = await createBill({ description: 'NF-B' });
       const invoice = await createInvoice([a.id, b.id]).expect(201);
 
       const paid = await server()
@@ -251,8 +253,8 @@ describe('Faturas (/invoices)', () => {
 
   describe('edição do conjunto de contas', () => {
     it('desvincula as contas removidas da lista', async () => {
-      const a = await createBill({ documentNumber: 'NF-A' });
-      const b = await createBill({ documentNumber: 'NF-B' });
+      const a = await createBill({ description: 'NF-A' });
+      const b = await createBill({ description: 'NF-B' });
       const invoice = await createInvoice([a.id, b.id]).expect(201);
 
       const updated = await server()

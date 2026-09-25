@@ -1,6 +1,7 @@
 import { request } from '../lib/http';
 import type {
   CreateReceivableInput,
+  ProjectBillingSummary,
   Receivable,
   ReceivableFilters,
   UpdateReceivableInput,
@@ -8,6 +9,11 @@ import type {
 
 export const listReceivables = (filters: ReceivableFilters) =>
   request<Receivable[]>('/receivables', { params: { ...filters } });
+
+export const getProjectBillingSummary = (projectId: string) =>
+  request<ProjectBillingSummary>('/receivables/summary', {
+    params: { projectId },
+  });
 
 export const createReceivable = (input: CreateReceivableInput) =>
   request<Receivable>('/receivables', { method: 'POST', body: input });

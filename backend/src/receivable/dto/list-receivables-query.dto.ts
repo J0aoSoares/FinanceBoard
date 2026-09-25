@@ -4,6 +4,12 @@ import {
   CashflowRegime,
 } from '../../bill/dto/list-bills-query.dto';
 
+export enum ReceivableDateBasis {
+  COMPETENCE = 'competence',
+  ISSUE = 'issue',
+  RECEIPT = 'receipt',
+}
+
 export class ListReceivablesQueryDto {
   @IsOptional()
   @IsString({ message: 'Empresa deve ser um identificador válido' })
@@ -28,4 +34,10 @@ export class ListReceivablesQueryDto {
   @IsOptional()
   @IsEnum(CashflowRegime, { message: 'Regime deve ser accrual ou cash' })
   regime?: CashflowRegime;
+
+  @IsOptional()
+  @IsEnum(ReceivableDateBasis, {
+    message: 'Base de data deve ser competence, issue ou receipt',
+  })
+  dateBasis?: ReceivableDateBasis;
 }
