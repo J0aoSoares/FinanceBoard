@@ -98,8 +98,8 @@ export function CashflowReportPage() {
             <Text size="xs" c="dimmed">
               A série de entrada mostra{' '}
               {inflowMode === 'gross'
-                ? 'o faturado bruto das notas, antes das retenções sofridas.'
-                : 'o líquido das notas, o que efetivamente entra no caixa.'}
+                ? 'o faturado bruto das NFs de serviço, antes das retenções sofridas.'
+                : 'o líquido das NFs de serviço, o que efetivamente entra no caixa.'}
             </Text>
             <SegmentedControl
               size="xs"

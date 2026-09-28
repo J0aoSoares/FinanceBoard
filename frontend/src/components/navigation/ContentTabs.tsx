@@ -7,7 +7,7 @@ import classes from './ContentTabs.module.css';
 
 const tabs = [
   { value: '/bills', label: 'Boletos', icon: IconReceipt2 },
-  { value: '/receivables', label: 'Notas de serviço', icon: IconCoins },
+  { value: '/receivables', label: 'Contas a Receber', icon: IconCoins },
   { value: '/reports', label: 'Relatórios', icon: IconChartBar },
 ];
 

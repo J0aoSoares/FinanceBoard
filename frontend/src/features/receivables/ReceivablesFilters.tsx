@@ -2,6 +2,7 @@ import { Button, Group, Select } from '@mantine/core';
 import { IconFilterOff } from '@tabler/icons-react';
 import { ProjectSelect } from '../../components/fields/ProjectSelect';
 import { useGlobalFilters } from '../../hooks/use-global-filters';
+import { useClientNames } from '../../hooks/use-receivables';
 import { STATUS_LABELS, type EffectiveStatus } from '../../api/types';
 
 const statusOptions = (Object.keys(STATUS_LABELS) as EffectiveStatus[]).map(
@@ -9,8 +10,11 @@ const statusOptions = (Object.keys(STATUS_LABELS) as EffectiveStatus[]).map(
 );
 
 export function ReceivablesFilters() {
-  const { screen, setFilter, clearScreenFilters } = useGlobalFilters();
-  const hasFilters = Boolean(screen.projectId || screen.status);
+  const { global, screen, setFilter, clearScreenFilters } = useGlobalFilters();
+  const clientNames = useClientNames(global.companyId);
+  const hasFilters = Boolean(
+    screen.projectId || screen.clientName || screen.status,
+  );
 
   return (
     <Group gap="sm" align="flex-end" wrap="wrap">
@@ -20,6 +24,18 @@ export function ReceivablesFilters() {
         placeholder="Todas as obras"
         value={screen.projectId ?? null}
         onChange={(value) => setFilter('projectId', value)}
+      />
+      <Select
+        label="Tomador"
+        size="xs"
+        w={220}
+        searchable
+        clearable
+        placeholder="Todos os tomadores"
+        nothingFoundMessage="Nenhum tomador"
+        data={clientNames.data ?? []}
+        value={screen.clientName ?? null}
+        onChange={(value) => setFilter('clientName', value)}
       />
       <Select
         label="Situação"

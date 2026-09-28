@@ -39,7 +39,7 @@ export function ReceivablesTable({
     return (
       <div className={classes.wrapper}>
         <p className={classes.empty}>
-          Nenhuma nota de serviço encontrada para os filtros selecionados.
+          Nenhuma NF de serviço encontrada para os filtros selecionados.
         </p>
       </div>
     );
@@ -59,7 +59,7 @@ export function ReceivablesTable({
       <table className={classes.table}>
         <thead>
           <tr>
-            <th>Número</th>
+            <th>NF</th>
             {showProject && <th>Obra</th>}
             <th>Tomador</th>
             <th>Emissão</th>
@@ -148,7 +148,7 @@ export function ReceivablesTable({
         <tfoot>
           <tr className={classes.footer}>
             <td colSpan={leadingColumns}>
-              {receivables.length} {receivables.length === 1 ? 'nota' : 'notas'}
+              {receivables.length} {receivables.length === 1 ? 'NF' : 'NFs'}
             </td>
             <td className={classes.numeric}>
               <MoneyText value={totals.gross} strong />

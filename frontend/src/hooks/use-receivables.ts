@@ -3,6 +3,7 @@ import {
   createReceivable,
   deleteReceivable,
   getProjectBillingSummary,
+  listClientNames,
   listReceivables,
   registerReceipt,
   removeReceipt,
@@ -20,6 +21,12 @@ export const useReceivables = (filters: ReceivableFilters) =>
     queryKey: ['receivables', filters],
     queryFn: () => listReceivables(filters),
     placeholderData: (previous) => previous,
+  });
+
+export const useClientNames = (companyId?: string) =>
+  useQuery({
+    queryKey: ['receivables', 'client-names', companyId ?? null],
+    queryFn: () => listClientNames(companyId),
   });
 
 export const useProjectBillingSummary = (projectId: string) =>
@@ -48,23 +55,23 @@ function useReceivableMutation<TVariables, TData>(
 export const useCreateReceivable = () =>
   useReceivableMutation(
     (input: CreateReceivableInput) => createReceivable(input),
-    'Nota de serviço cadastrada.',
-    'Não foi possível cadastrar a nota de serviço',
+    'NF de serviço cadastrada.',
+    'Não foi possível cadastrar a NF de serviço',
   );
 
 export const useUpdateReceivable = () =>
   useReceivableMutation(
     ({ id, input }: { id: string; input: UpdateReceivableInput }) =>
       updateReceivable(id, input),
-    'Nota de serviço atualizada.',
-    'Não foi possível atualizar a nota de serviço',
+    'NF de serviço atualizada.',
+    'Não foi possível atualizar a NF de serviço',
   );
 
 export const useDeleteReceivable = () =>
   useReceivableMutation(
     (id: string) => deleteReceivable(id),
-    'Nota de serviço removida.',
-    'Não foi possível remover a nota de serviço',
+    'NF de serviço removida.',
+    'Não foi possível remover a NF de serviço',
   );
 
 export const useRegisterReceipt = () =>

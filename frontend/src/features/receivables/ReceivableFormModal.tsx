@@ -28,6 +28,7 @@ import {
   buildUpdatePayload,
   emptyReceivableForm,
   previewNetAmount,
+  projectCreationBlockedReason,
   receivableFormValidation,
   receivableToFormValues,
   type ReceivableFormValues,
@@ -70,8 +71,7 @@ export function ReceivableFormModal({
   const isEditing = receivable !== null;
   const pending = createReceivable.isPending || updateReceivable.isPending;
   const preview = previewNetAmount(form.getValues());
-  const missingLegacyData =
-    isEditing && (receivable.projectId === null || receivable.number === null);
+  const missingLegacyData = isEditing && receivable.number === null;
 
   const projectProps = form.getInputProps('projectId');
   const changeProject = (next: string | null) => {
@@ -79,8 +79,9 @@ export function ReceivableFormModal({
     const previousClient = clientOf(current.projectId);
     projectProps.onChange(next);
     if (
-      current.clientName.trim() === '' ||
-      current.clientName === previousClient
+      next !== null &&
+      (current.clientName.trim() === '' ||
+        current.clientName === previousClient)
     ) {
       form.setFieldValue('clientName', clientOf(next));
     }
@@ -103,7 +104,7 @@ export function ReceivableFormModal({
     <Modal
       opened
       onClose={onClose}
-      title={isEditing ? 'Editar nota de serviço' : 'Nova nota de serviço'}
+      title={isEditing ? 'Editar NF de serviço' : 'Nova NF de serviço'}
       size="lg"
       centered
     >
@@ -115,15 +116,15 @@ export function ReceivableFormModal({
               variant="light"
               icon={<IconInfoCircle size={18} />}
             >
-              Este lançamento é anterior às notas de serviço. Informe o número
-              da nota e a obra para salvar.
+              Este lançamento é anterior às NFs de serviço. Informe o número da
+              NF para salvar.
             </Alert>
           )}
 
           <Grid gap="sm">
             <Grid.Col span={{ base: 12, sm: 5 }}>
               <TextInput
-                label="Número da nota"
+                label="Número da NF"
                 placeholder="NFS-0101"
                 withAsterisk
                 {...form.getInputProps('number')}
@@ -140,21 +141,26 @@ export function ReceivableFormModal({
             </Grid.Col>
 
             <Grid.Col span={{ base: 12, sm: 6 }}>
-              <ProjectSelect
-                placeholder="Selecione a obra"
+              <TextInput
+                label="Tomador"
+                description="Quem paga a NF"
                 withAsterisk
-                clearable={false}
-                activeOnly
-                {...projectProps}
-                onChange={changeProject}
+                {...form.getInputProps('clientName')}
               />
             </Grid.Col>
             <Grid.Col span={{ base: 12, sm: 6 }}>
-              <TextInput
-                label="Tomador"
-                description="Preenchido com o cliente da obra"
-                withAsterisk
-                {...form.getInputProps('clientName')}
+              <ProjectSelect
+                creatable
+                clearable
+                activeOnly
+                placeholder="Digite ou selecione a obra"
+                description="Opcional. Ao escolher, preenche o tomador"
+                newProjectClientName={form.getValues().clientName}
+                createDisabledReason={projectCreationBlockedReason(
+                  form.getValues().clientName,
+                )}
+                {...projectProps}
+                onChange={changeProject}
               />
             </Grid.Col>
 

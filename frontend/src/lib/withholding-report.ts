@@ -49,7 +49,7 @@ export function invoiceCsvRows(report: WithholdingReport): CsvCell[][] {
       csvMoney(invoice.netAmount),
     ]),
     [
-      `Total: ${report.totals.invoiceCount} ${report.totals.invoiceCount === 1 ? 'nota' : 'notas'}`,
+      `Total: ${report.totals.invoiceCount} ${report.totals.invoiceCount === 1 ? 'NF' : 'NFs'}`,
       '',
       '',
       '',
@@ -92,7 +92,7 @@ function summaryRows<T extends WithholdingCompany | WithholdingProject>(
   report: WithholdingReport,
 ): CsvCell[][] {
   return [
-    [...labels, 'Notas', ...typeHeaders(), 'Total retido'],
+    [...labels, 'NFs', ...typeHeaders(), 'Total retido'],
     ...groups.map((group) => [
       ...describe(group),
       group.invoiceCount,

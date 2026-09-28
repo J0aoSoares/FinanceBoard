@@ -32,7 +32,7 @@ type ReceivableWithRelations = Prisma.ReceivableGetPayload<{
   include: typeof receivableInclude;
 }>;
 
-const NOT_FOUND = 'Nota de serviço não encontrada';
+const NOT_FOUND = 'NF de serviço não encontrada';
 
 @Injectable()
 export class ReceivableService {
@@ -59,7 +59,7 @@ export class ReceivableService {
           issueDate: new Date(dto.issueDate),
           dueDate: new Date(dto.dueDate),
           companyId: dto.companyId,
-          projectId: dto.projectId,
+          projectId: dto.projectId ?? null,
           withholdings: { create: this.withholdingRows(withholdings) },
         },
         include: receivableInclude,
@@ -84,6 +84,9 @@ export class ReceivableService {
     }
     if (query.projectId) {
       filters.push({ projectId: query.projectId });
+    }
+    if (query.clientName) {
+      filters.push({ clientName: query.clientName });
     }
     if (query.status === BillStatusFilter.PAID) {
       filters.push({ status: PaymentStatus.PAID });
@@ -127,6 +130,16 @@ export class ReceivableService {
       return { receiptDate: range };
     }
     return { issueDate: range };
+  }
+
+  async clientNames(companyId?: string) {
+    const rows = await this.prisma.receivable.findMany({
+      where: companyId ? { companyId } : undefined,
+      distinct: ['clientName'],
+      select: { clientName: true },
+      orderBy: { clientName: 'asc' },
+    });
+    return rows.map((row) => row.clientName);
   }
 
   async summary(projectId: string) {
@@ -199,14 +212,11 @@ export class ReceivableService {
     }
     if (existing.status === PaymentStatus.PAID) {
       throw new ConflictException(
-        'Não é possível editar uma nota já recebida; estorne o recebimento antes',
+        'Não é possível editar uma NF de serviço já recebida; estorne o recebimento antes',
       );
     }
-    if (dto.projectId === null || !(dto.projectId ?? existing.projectId)) {
-      throw new BadRequestException('Obra é obrigatória');
-    }
     if (dto.number === null || !(dto.number ?? existing.number)) {
-      throw new BadRequestException('Número da nota é obrigatório');
+      throw new BadRequestException('Número da NF é obrigatório');
     }
 
     const withholdings =
@@ -264,7 +274,7 @@ export class ReceivableService {
       throw new NotFoundException(NOT_FOUND);
     }
     if (receivable.status === PaymentStatus.PAID) {
-      throw new ConflictException('Esta nota já foi recebida');
+      throw new ConflictException('Esta NF de serviço já foi recebida');
     }
 
     const updated = await this.prisma.receivable.update({
@@ -287,7 +297,7 @@ export class ReceivableService {
     }
     if (receivable.status !== PaymentStatus.PAID) {
       throw new ConflictException(
-        'Esta nota não possui recebimento registrado',
+        'Esta NF de serviço não possui recebimento registrado',
       );
     }
 
@@ -382,7 +392,7 @@ export class ReceivableService {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
       if (error.code === 'P2002') {
         return new ConflictException(
-          'Já existe uma nota com esse número nesta empresa',
+          'Já existe uma NF de serviço com esse número nesta empresa',
         );
       }
       if (error.code === 'P2003') {

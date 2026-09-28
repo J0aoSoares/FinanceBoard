@@ -125,7 +125,7 @@ function SummaryTables({
             <thead>
               <tr>
                 <th>Empresa</th>
-                <th className={tableClasses.numeric}>Notas</th>
+                <th className={tableClasses.numeric}>NFs</th>
                 <TypeHeaders />
                 <th className={tableClasses.numeric}>Total</th>
               </tr>
@@ -165,7 +165,7 @@ function SummaryTables({
             <thead>
               <tr>
                 <th>Obra</th>
-                <th className={tableClasses.numeric}>Notas</th>
+                <th className={tableClasses.numeric}>NFs</th>
                 <TypeHeaders />
                 <th className={tableClasses.numeric}>Total</th>
               </tr>
@@ -247,7 +247,7 @@ function InvoicesTable({ report }: { report: WithholdingReport }) {
           <tr className={tableClasses.footer}>
             <td colSpan={7}>
               {report.totals.invoiceCount}{' '}
-              {report.totals.invoiceCount === 1 ? 'nota' : 'notas'}
+              {report.totals.invoiceCount === 1 ? 'NF' : 'NFs'}
             </td>
             <td className={tableClasses.numeric}>
               <MoneyText value={report.totals.grossAmount} strong />
@@ -313,7 +313,7 @@ function LegacyBlock({
       <Collapse expanded={expanded}>
         <Stack gap="xs" pt="xs">
           <Text size="xs" c="dimmed">
-            Valores registrados antes de as retenções passarem para as notas de
+            Valores registrados antes de as retenções passarem para as NFs de
             serviço. Não são retenções sofridas e não entram nos totais acima.
           </Text>
           <div className={tableClasses.wrapper}>
@@ -421,13 +421,13 @@ export function WithholdingsReportPage() {
         <Stack gap="lg">
           {data.invoices.length === 0 ? (
             <Text size="sm" c="dimmed">
-              Nenhuma retenção sofrida em notas de serviço no período.
+              Nenhuma retenção sofrida em NFs de serviço no período.
             </Text>
           ) : (
             <>
               <SummaryTables report={data} exportRows={exportRows} />
               <Section
-                title="Notas de serviço com retenção"
+                title="NFs de serviço com retenção"
                 onExport={() =>
                   exportRows('retencoes-sofridas', invoiceCsvRows(data))
                 }

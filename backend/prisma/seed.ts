@@ -89,7 +89,7 @@ type SeedReceivable = {
   dueDate: string;
   receiptDate?: string;
   companyId: string;
-  projectId: string;
+  projectId: string | null;
 };
 
 const COMPANIES = [
@@ -204,10 +204,13 @@ async function main() {
 
   const projects = new Map<string, string>();
   for (const project of PROJECTS) {
-    const existing = await prisma.project.findFirst({
-      where: { name: project.name },
+    const key = nameKey(project.name);
+    const existing = await prisma.project.findUnique({
+      where: { nameKey: key },
     });
-    const record = existing ?? (await prisma.project.create({ data: project }));
+    const record =
+      existing ??
+      (await prisma.project.create({ data: { ...project, nameKey: key } }));
     projects.set(project.name, record.id);
   }
   const project = (name: string) => projects.get(name) as string;
@@ -520,6 +523,18 @@ async function main() {
       dueDate: '2026-07-20',
       companyId: transporte.id,
       projectId: galpao,
+    },
+    {
+      number: 'NFS-0203',
+      description: 'Consultoria em movimentação de solo',
+      clientName: 'Loteadora Horizonte',
+      grossAmount: '6000.00',
+      withholdings: [{ type: TaxType.ISS, amount: '300.00' }],
+      competence: '2026-08',
+      issueDate: '2026-08-20',
+      dueDate: '2026-09-20',
+      companyId: transporte.id,
+      projectId: null,
     },
   ];
 

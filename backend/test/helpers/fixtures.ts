@@ -22,10 +22,18 @@ export async function createBaseFixtures(
     data: { legalName: 'Transporte Teste LTDA', cnpj: '22222222000172' },
   });
   const projectA = await prisma.project.create({
-    data: { name: 'Obra Alfa', clientName: 'Cliente Alfa' },
+    data: {
+      name: 'Obra Alfa',
+      nameKey: nameKey('Obra Alfa'),
+      clientName: 'Cliente Alfa',
+    },
   });
   const projectB = await prisma.project.create({
-    data: { name: 'Obra Beta', clientName: 'Cliente Beta' },
+    data: {
+      name: 'Obra Beta',
+      nameKey: nameKey('Obra Beta'),
+      clientName: 'Cliente Beta',
+    },
   });
   const category = await prisma.category.create({
     data: { name: 'Combustível', nameKey: nameKey('Combustível') },

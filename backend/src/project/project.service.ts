@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { nameKey } from '../common/name-key.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProjectDto } from './dto/create-project.dto';
 import { ListProjectsQueryDto } from './dto/list-projects-query.dto';
@@ -14,7 +15,11 @@ export class ProjectService {
   constructor(private readonly prisma: PrismaService) {}
 
   create(dto: CreateProjectDto) {
-    return this.prisma.project.create({ data: dto });
+    return this.prisma.project
+      .create({ data: { ...dto, nameKey: nameKey(dto.name) } })
+      .catch((error: unknown) => {
+        throw this.translateWriteError(error);
+      });
   }
 
   findAll(query: ListProjectsQueryDto) {
@@ -34,7 +39,11 @@ export class ProjectService {
 
   async update(id: string, dto: UpdateProjectDto) {
     try {
-      return await this.prisma.project.update({ where: { id }, data: dto });
+      return await this.prisma.project.update({
+        where: { id },
+        data:
+          dto.name === undefined ? dto : { ...dto, nameKey: nameKey(dto.name) },
+      });
     } catch (error) {
       throw this.translateWriteError(error);
     }
@@ -60,6 +69,9 @@ export class ProjectService {
 
   private translateWriteError(error: unknown) {
     if (error instanceof Prisma.PrismaClientKnownRequestError) {
+      if (error.code === 'P2002') {
+        return new ConflictException('Já existe uma obra com esse nome');
+      }
       if (error.code === 'P2003') {
         return new ConflictException(
           'Não é possível remover esta obra: existem boletos ou contas a receber vinculados a ela',

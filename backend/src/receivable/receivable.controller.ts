@@ -31,6 +31,11 @@ export class ReceivableController {
     return this.receivableService.findAll(query);
   }
 
+  @Get('client-names')
+  clientNames(@Query('companyId') companyId?: string) {
+    return this.receivableService.clientNames(companyId);
+  }
+
   @Get('summary')
   summary(@Query() query: ReceivableSummaryQueryDto) {
     return this.receivableService.summary(query.projectId);

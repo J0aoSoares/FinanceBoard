@@ -34,7 +34,7 @@ export function useReceivableDialogs({
       children: (
         <Text size="sm">
           O recebimento da <strong>{receivableLabel(receivable)}</strong> será
-          desfeito e a nota voltará para pendente.
+          desfeito e a NF voltará para pendente.
         </Text>
       ),
       labels: { confirm: 'Estornar', cancel: 'Cancelar' },
@@ -44,7 +44,7 @@ export function useReceivableDialogs({
 
   const confirmDelete = (receivable: Receivable) =>
     modals.openConfirmModal({
-      title: 'Excluir nota de serviço',
+      title: 'Excluir NF de serviço',
       centered: true,
       children: (
         <Text size="sm">

@@ -10,6 +10,9 @@ import type {
 export const listReceivables = (filters: ReceivableFilters) =>
   request<Receivable[]>('/receivables', { params: { ...filters } });
 
+export const listClientNames = (companyId?: string) =>
+  request<string[]>('/receivables/client-names', { params: { companyId } });
+
 export const getProjectBillingSummary = (projectId: string) =>
   request<ProjectBillingSummary>('/receivables/summary', {
     params: { projectId },

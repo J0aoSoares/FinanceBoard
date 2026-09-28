@@ -27,7 +27,7 @@ npm run dev               # http://localhost:5173
 | Build             | Vite + React 19 + TS     | React 19.2 é peer do Mantine 9 |
 | UI                | Mantine 9                | v9 é 100% CSS-variables, o que permite o tema ler os tokens |
 | Datas             | `@mantine/dates` + dayjs | Valores em string `YYYY-MM-DD`, sem objeto `Date` |
-| Formulário        | `@mantine/form`          | `getInputProps` e `insertListItem` para a lista de retenções |
+| Formulário        | `@mantine/form`          | `getInputProps` e `insertListItem` para as listas de boletos e de retenções |
 | Estado de servidor| TanStack Query           | Cache e invalidação após mutação |
 | Rotas             | React Router             | `useSearchParams` é o store dos filtros globais |
 
@@ -115,20 +115,22 @@ src/
 │   ├── fields/    DateField, MonthField, MoneyInput e os selects de entidade
 │   └── layout/    AppLayout, GlobalFilterBar, ColorSchemeToggle
 ├── features/
-│   └── bills/     tela de contas a pagar
-├── hooks/         use-global-filters, use-bills, use-catalog
-├── lib/           money, date, http, notify
+│   ├── bills/        Boletos: NF com vários boletos, listagem por vencimento
+│   ├── receivables/  Contas a Receber: NFs de serviço e retenções sofridas
+│   ├── reports/      fluxo de caixa, retenções sofridas, resultado por obra
+│   └── projects/ companies/ suppliers/ categories/ users/   cadastros
+├── hooks/         use-global-filters, use-bills, use-receivables, use-catalog, use-create-by-name
+├── lib/           money, date, http, notify, digitable-line, name-key, installment-labels
 ├── styles/        tokens.css (fonte da verdade), global.css
 └── theme/         tema Mantine lendo os tokens
 ```
 
 ## Estado atual
 
-Pronto: **Contas a pagar** (`/bills`) — tabela com totais, filtros, cadastro e edição com retenções, pagar, estornar e excluir.
+- **Boletos** (`/bills`): uma NF do fornecedor com um ou mais boletos, cadastrada de uma vez ("Adicionar boleto", "Gerar boletos" com o último dia do mês e a divisão em centavos). A listagem é por vencimento, com a NF numa linha-mãe expansível.
+- **Contas a Receber** (`/receivables`): NFs de serviço com as retenções sofridas; o líquido é calculado pelo backend. Filtros por obra, tomador, status e competência.
+- **Relatórios** (`/reports`): fluxo de caixa, retenções sofridas e resultado por obra, todos exportáveis em CSV.
+- **Obra** (`/projects/:id`): NFs emitidas contra a obra, com faturado, recebido e saldo a receber.
+- **Cadastro na hora:** `CreatableEntitySelect` + `useCreateByName` são o ponto único usado por fornecedor, categoria e obra. A busca ignora maiúsculas, acentos e espaços; um 409 de duplicidade seleciona o registro existente.
 
-Pendente: faturas, contas a receber, relatórios e as telas de cadastro. Os selects já leem esses recursos; falta a manutenção.
-
-Duas regras do backend que a tela reflete e vale conhecer:
-
-- O status exibido é `effectiveStatus`, calculado na leitura — `OVERDUE` nunca é digitado.
-- Conta dentro de uma fatura herda vencimento e status dela (`effectiveDueDate`) e **não pode ser paga individualmente**; o pagamento é registrado na fatura.
+O status exibido é `effectiveStatus`, calculado na leitura — `OVERDUE` nunca é digitado. Os testes unitários (`npm test`) rodam com o test runner nativo do Node, sem dependência nova.

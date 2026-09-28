@@ -67,6 +67,41 @@ describe('Cadastros auxiliares', () => {
       ]);
     });
 
+    it('recusa obra com nome que só difere por maiúsculas, acentos ou espaços', async () => {
+      const created = await server()
+        .post('/projects')
+        .send({ name: ' Pavimentação Rodovia ', clientName: ' Prefeitura ' })
+        .expect(201);
+      expect(created.body).toMatchObject({
+        name: 'Pavimentação Rodovia',
+        clientName: 'Prefeitura',
+      });
+
+      for (const name of ['pavimentacao rodovia', 'PAVIMENTAÇÃO  RODOVIA']) {
+        const response = await server()
+          .post('/projects')
+          .send({ name, clientName: 'Outro cliente' })
+          .expect(409);
+        expect(response.body.message).toBe('Já existe uma obra com esse nome');
+      }
+    });
+
+    it('recusa renomear obra para o nome de outra', async () => {
+      await server()
+        .post('/projects')
+        .send({ name: 'Galpão Norte', clientName: 'Cliente' })
+        .expect(201);
+      const other = await server()
+        .post('/projects')
+        .send({ name: 'Galpão Sul', clientName: 'Cliente' })
+        .expect(201);
+
+      await server()
+        .patch(`/projects/${other.body.id}`)
+        .send({ name: 'galpao norte' })
+        .expect(409);
+    });
+
     it('recusa status fora do enum', async () => {
       await server()
         .post('/projects')

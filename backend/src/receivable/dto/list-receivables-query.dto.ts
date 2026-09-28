@@ -20,6 +20,10 @@ export class ListReceivablesQueryDto {
   projectId?: string;
 
   @IsOptional()
+  @IsString({ message: 'Tomador deve ser um texto' })
+  clientName?: string;
+
+  @IsOptional()
   @IsEnum(BillStatusFilter, {
     message: 'Status deve ser PENDING, PAID ou OVERDUE',
   })

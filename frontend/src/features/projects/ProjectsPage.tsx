@@ -52,7 +52,7 @@ export function ProjectsPage() {
       children: (
         <Text size="sm">
           A obra <strong>{project.name}</strong> será removida. Se houver contas
-          ou notas de serviço vinculadas, a API vai recusar a exclusão — nesse
+          ou contas a receber vinculadas, a API vai recusar a exclusão — nesse
           caso, encerre a obra em vez de removê-la.
         </Text>
       ),

@@ -134,7 +134,7 @@ describe('CSV do relatório de retenções sofridas', () => {
       '1600,00',
       '8400,00',
     ]);
-    assert.equal(total[0], 'Total: 1 nota');
+    assert.equal(total[0], 'Total: 1 NF');
     assert.equal(total.length, header.length);
   });
 
@@ -146,7 +146,7 @@ describe('CSV do relatório de retenções sofridas', () => {
 
   it('resume por empresa e por obra com o total geral no fim', () => {
     const companies = companyCsvRows(report);
-    assert.deepEqual(companies[0].slice(0, 3), ['Empresa', 'CNPJ', 'Notas']);
+    assert.deepEqual(companies[0].slice(0, 3), ['Empresa', 'CNPJ', 'NFs']);
     assert.deepEqual(companies[companies.length - 1], [
       'Total',
       '',

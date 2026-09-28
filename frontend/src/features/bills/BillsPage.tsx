@@ -39,7 +39,10 @@ export function BillsPage() {
     companyId: global.companyId,
     month: global.month,
     dateBasis: 'due',
-    ...screen,
+    projectId: screen.projectId,
+    categoryId: screen.categoryId,
+    supplierId: screen.supplierId,
+    status: screen.status,
   };
   const { data, isLoading, isError, error, isFetching } = useBills(filters);
 

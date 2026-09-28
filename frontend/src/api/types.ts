@@ -222,7 +222,7 @@ export interface CreateReceivableInput {
   issueDate: string;
   dueDate: string;
   companyId: string;
-  projectId: string;
+  projectId?: string | null;
   withholdings: WithholdingInput[];
 }
 
@@ -233,6 +233,7 @@ export type ReceivableDateBasis = 'competence' | 'issue' | 'receipt';
 export interface ReceivableFilters {
   companyId?: string;
   projectId?: string;
+  clientName?: string;
   status?: EffectiveStatus;
   month?: string;
   regime?: Regime;

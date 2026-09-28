@@ -4,13 +4,13 @@ import type {
   TaxType,
   UpdateReceivableInput,
 } from '../../api/types';
-import { apiDate, monthOf, type Month } from '../../lib/date';
+import { apiDate, monthOf, type Month } from '../../lib/date.ts';
 import {
   compareMoney,
   isCanonicalMoney,
   netOfDeductions,
   sumMoney,
-} from '../../lib/money';
+} from '../../lib/money.ts';
 
 export interface WithholdingRow {
   type: TaxType;
@@ -67,9 +67,7 @@ export const receivableToFormValues = (
 };
 
 export const receivableLabel = (receivable: Receivable) =>
-  receivable.number
-    ? `Nota ${receivable.number}`
-    : `"${receivable.description}"`;
+  receivable.number ? `NF ${receivable.number}` : `"${receivable.description}"`;
 
 const positiveAmount = (value: string) => {
   if (!isCanonicalMoney(value)) {
@@ -84,11 +82,10 @@ const required = (message: string) => (value: string | null) =>
   value && value.trim() !== '' ? null : message;
 
 export const receivableFormValidation = {
-  number: required('Número da nota é obrigatório'),
+  number: required('Número da NF é obrigatório'),
   description: required('Descrição do serviço é obrigatória'),
   clientName: required('Tomador é obrigatório'),
   companyId: required('Empresa emissora é obrigatória'),
-  projectId: required('Obra é obrigatória'),
   competence: required('Competência é obrigatória'),
   issueDate: required('Data de emissão é obrigatória'),
   grossAmount: positiveAmount,
@@ -126,6 +123,11 @@ export const previewNetAmount = (values: ReceivableFormValues) =>
     values.withholdings.map((row) => row.amount),
   );
 
+export const projectCreationBlockedReason = (clientName: string) =>
+  clientName.trim() === ''
+    ? 'Preencha o tomador antes de cadastrar a obra'
+    : null;
+
 export function buildCreatePayload(
   values: ReceivableFormValues,
 ): CreateReceivableInput {
@@ -138,7 +140,7 @@ export function buildCreatePayload(
     issueDate: values.issueDate!,
     dueDate: values.dueDate!,
     companyId: values.companyId!,
-    projectId: values.projectId!,
+    projectId: values.projectId,
     withholdings: values.withholdings.map((row) => ({
       type: row.type,
       amount: row.amount,

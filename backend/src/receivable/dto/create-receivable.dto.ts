@@ -27,8 +27,8 @@ export class ReceivableWithholdingDto {
 
 export class CreateReceivableDto {
   @Transform(trimmed)
-  @IsString({ message: 'Número da nota deve ser um texto' })
-  @IsNotEmpty({ message: 'Número da nota é obrigatório' })
+  @IsString({ message: 'Número da NF deve ser um texto' })
+  @IsNotEmpty({ message: 'Número da NF é obrigatório' })
   number!: string;
 
   @Transform(trimmed)
@@ -68,9 +68,9 @@ export class CreateReceivableDto {
   @IsNotEmpty({ message: 'Empresa é obrigatória' })
   companyId!: string;
 
+  @IsOptional()
   @IsString({ message: 'Obra deve ser um identificador válido' })
-  @IsNotEmpty({ message: 'Obra é obrigatória' })
-  projectId!: string;
+  projectId?: string | null;
 
   @IsOptional()
   @IsArray({ message: 'Retenções devem ser uma lista' })

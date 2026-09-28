@@ -152,6 +152,16 @@ export const useCreateSupplierByName = () =>
     errorTitle: 'Não foi possível cadastrar o fornecedor',
   });
 
+export const useCreateProjectByName = (clientName: string) =>
+  useCreateByName({
+    queryKey: 'projects',
+    list: () => listProjects(),
+    create: (name) =>
+      createProject({ name, clientName: clientName.trim(), status: 'ACTIVE' }),
+    successMessage: 'Obra cadastrada.',
+    errorTitle: 'Não foi possível cadastrar a obra',
+  });
+
 export const useCreateCategoryByName = () =>
   useCreateByName({
     queryKey: 'categories',

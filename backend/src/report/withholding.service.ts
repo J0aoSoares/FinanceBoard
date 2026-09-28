@@ -99,7 +99,7 @@ export class WithholdingService {
       const projectKey = invoice.project?.id ?? '';
       const project = projects.get(projectKey) ?? {
         id: invoice.project?.id ?? null,
-        name: invoice.project?.name ?? 'Sem obra (lançamentos anteriores)',
+        name: invoice.project?.name ?? 'Sem obra',
         invoiceCount: 0,
         total: zero(),
         byType: new Map(),

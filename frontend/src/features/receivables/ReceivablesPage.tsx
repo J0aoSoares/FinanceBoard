@@ -22,6 +22,7 @@ export function ReceivablesPage() {
     month: global.month,
     dateBasis: 'competence',
     projectId: screen.projectId,
+    clientName: screen.clientName,
     status: screen.status,
   };
   const { data, isLoading, isError, error, isFetching } =
@@ -31,12 +32,12 @@ export function ReceivablesPage() {
     <Stack gap="lg" p="lg">
       <Group justify="space-between" align="flex-end">
         <Text size="sm" c="dimmed">
-          Notas de serviço · competência {formatMonth(global.month)}
+          Contas a Receber · competência {formatMonth(global.month)}
           {global.companyId ? '' : ' · consolidado'}
         </Text>
         {canWrite && (
           <Button leftSection={<IconPlus size={16} />} onClick={openNew}>
-            Nova nota de serviço
+            Nova NF de serviço
           </Button>
         )}
       </Group>
@@ -47,7 +48,7 @@ export function ReceivablesPage() {
         isLoading={isLoading}
         isError={isError}
         error={error}
-        errorTitle="Não foi possível carregar as notas de serviço"
+        errorTitle="Não foi possível carregar as contas a receber"
       >
         <Stack gap="xs">
           <ReceivablesTable receivables={data ?? []} {...tableHandlers} />

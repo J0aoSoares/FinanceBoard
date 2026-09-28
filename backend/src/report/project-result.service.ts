@@ -239,7 +239,7 @@ export class ProjectResultService {
   private newEntry(info: ProjectInfo): Entry {
     return {
       projectId: info?.id ?? null,
-      name: info?.name ?? 'Receitas sem obra (lançamentos anteriores)',
+      name: info?.name ?? 'Receitas sem obra',
       clientName: info?.clientName ?? null,
       status: info?.status ?? null,
       revenue: emptyRevenue(),

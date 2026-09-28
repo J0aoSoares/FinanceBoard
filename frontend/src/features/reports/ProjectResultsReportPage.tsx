@@ -74,7 +74,7 @@ const buildCsvRows = (report: ProjectResultReport) => {
       ? [
           [
             'Sem obra',
-            'Receitas sem obra (lançamentos anteriores)',
+            'Receitas sem obra',
             '',
             csvMoney(report.unassignedRevenue.revenue.grossAmount),
             csvMoney(report.unassignedRevenue.revenue.withholdingTotal),
@@ -321,8 +321,8 @@ export function ProjectResultsReportPage() {
                               <span className={tableClasses.secondary}>
                                 {project.revenue.invoiceCount}{' '}
                                 {project.revenue.invoiceCount === 1
-                                  ? 'nota'
-                                  : 'notas'}{' '}
+                                  ? 'NF'
+                                  : 'NFs'}{' '}
                                 · {project.cost.billCount}{' '}
                                 {project.cost.billCount === 1
                                   ? 'boleto'
@@ -372,7 +372,7 @@ export function ProjectResultsReportPage() {
                 {data.unassignedRevenue && (
                   <tr className={classes.separateRow}>
                     <td>
-                      Receitas sem obra (lançamentos anteriores)
+                      Receitas sem obra
                       <span className={tableClasses.secondary}>
                         Somadas só no consolidado
                       </span>
@@ -472,7 +472,7 @@ export function ProjectResultsReportPage() {
           </div>
 
           <Text size="xs" c="dimmed">
-            Receita pelas notas do período (
+            Receita pelas NFs de serviço do período (
             {data.regime === 'cash' ? 'data de recebimento' : 'competência'}
             ); recebido pelo que entrou dentro do período; custo pelos boletos
             lançados na obra. Boletos antigos com retenções entram pelo valor

@@ -9,14 +9,14 @@ Referência das rotas do backend. Base: `http://localhost:3000`.
 - [Autenticação](#autenticação)
 - [Usuários](#usuários-users)
 - [Empresas](#empresas-companies)
+- [Nomes únicos](#nomes-únicos-fornecedores-categorias-e-obras)
 - [Obras](#obras-projects)
 - [Fornecedores](#fornecedores-suppliers)
 - [Categorias](#categorias-categories)
-- [Contas a pagar](#contas-a-pagar-bills)
-- [Faturas](#faturas-invoices)
-- [Contas a receber](#contas-a-receber-receivables)
+- [Boletos](#boletos-bills)
+- [Faturas (fora da interface)](#faturas-invoices)
+- [Contas a Receber](#contas-a-receber-receivables)
 - [Relatórios](#relatórios-reports)
-- [Como as faturas afetam o fluxo de caixa](#como-as-faturas-afetam-o-fluxo-de-caixa)
 
 ---
 
@@ -60,7 +60,7 @@ cp .env.test.example .env.test    # ajuste a senha para a mesma do .env
 npm test
 ```
 
-A suíte é **end-to-end**: sobe a aplicação inteira e bate nas rotas HTTP contra um Postgres real. Nada de mock — as regras que mais importam aqui (deslocamento de fatura no fluxo de caixa, cálculo do líquido, filtros por regime) vivem em consultas Prisma e aritmética de `Decimal`, e mock nenhum verifica isso.
+A suíte é **end-to-end**: sobe a aplicação inteira e bate nas rotas HTTP contra um Postgres real. Nada de mock — as regras que mais importam aqui (cálculo do líquido das NFs de serviço, soma dos boletos da NF, datas usadas por cada regime) vivem em consultas Prisma e aritmética de `Decimal`, e mock nenhum verifica isso.
 
 Os testes rodam num banco **separado** (`financeboard_test`), criado e migrado automaticamente na primeira execução. Cada teste começa com as tabelas truncadas, então o banco de desenvolvimento nunca é tocado. Como a suíte apaga tudo, ela se recusa a rodar se a `DATABASE_URL` do `.env.test` não apontar para um banco com `financeboard_test` no nome.
 
@@ -69,11 +69,11 @@ Os testes rodam num banco **separado** (`financeboard_test`), criado e migrado a
 | `auth.e2e-spec.ts`          | Login, papéis, rotação e reuso de refresh, logout, expurgo     |
 | `user.e2e-spec.ts`          | CRUD de usuários, redefinição e troca de senha, desativação    |
 | `company.e2e-spec.ts`       | CNPJ único e formatado, bloqueio de remoção com vínculos      |
-| `catalog.e2e-spec.ts`       | Obras, categorias e fornecedores                              |
-| `bill.e2e-spec.ts`          | Líquido, retenções, pagamento/estorno, status, filtros        |
-| `invoice.e2e-spec.ts`       | Agrupamento, herança de vencimento, pagamento em cascata      |
-| `receivable.e2e-spec.ts`    | Recebimento, estorno, filtros por regime                      |
-| `report.e2e-spec.ts`        | Fluxo de caixa nos dois regimes, retenções, custo por obra    |
+| `catalog.e2e-spec.ts`       | Obras, categorias e fornecedores, com nomes únicos normalizados |
+| `bill.e2e-spec.ts`          | Boletos, NF com vários boletos, linha digitável, filtros por data |
+| `invoice.e2e-spec.ts`       | Módulo de faturas, mantido no backend fora da interface        |
+| `receivable.e2e-spec.ts`    | NFs de serviço, retenções sofridas, recebimento, tomador, totais da obra |
+| `report.e2e-spec.ts`        | Fluxo de caixa conferido com as telas, retenções sofridas, resultado por obra |
 
 ---
 
@@ -81,7 +81,7 @@ Os testes rodam num banco **separado** (`financeboard_test`), criado e migrado a
 
 **Datas.** Entrada sempre em `aaaa-mm-dd`. Saída em ISO 8601. A formatação `dd/mm/aaaa` é responsabilidade do frontend.
 
-**Valores.** Enviados e recebidos como string decimal (`"1234.56"`), nunca number — evita erro de ponto flutuante em dinheiro. Campos de registro (`grossAmount`, `netAmount`, `amount`) vêm como o Postgres armazena (`"1000"`); totais calculados por faturas e relatórios vêm sempre com duas casas (`"1000.00"`).
+**Valores.** Enviados e recebidos como string decimal (`"1234.56"`), nunca number — evita erro de ponto flutuante em dinheiro. Campos de registro (`grossAmount`, `netAmount`) vêm como o Postgres armazena (`"1000"`); totais calculados (resumo da NF, totais da obra e relatórios) vêm sempre com duas casas (`"1000.00"`).
 
 **Status.** O banco guarda apenas `PENDING` e `PAID`. A API devolve `effectiveStatus` calculado na leitura, que pode ser `PENDING`, `PAID` ou `OVERDUE` — vencida nunca é digitada.
 
@@ -208,7 +208,15 @@ POST /companies
 { "legalName": "Empresa de Terraplenagem e Locações LTDA", "cnpj": "11111111000191" }
 ```
 
-CNPJ com exatamente 14 dígitos, sem pontuação, e único no sistema. Remover empresa com contas vinculadas retorna 409.
+CNPJ com exatamente 14 dígitos, sem pontuação, e único no sistema. Remover empresa com boletos ou contas a receber vinculados retorna 409.
+
+---
+
+## Nomes únicos: fornecedores, categorias e obras
+
+Fornecedor, categoria e obra têm nome **único ignorando maiúsculas, acentos e espaços**. A API grava, ao lado do nome, uma chave normalizada (`nameKey`) com índice único: "Posto Ipiranga", "posto ipiranga " e "Pôsto Ipirangá" são o mesmo nome. Cadastrar ou renomear para um nome equivalente retorna 409, e os espaços nas pontas são removidos antes de gravar.
+
+O frontend usa isso no cadastro na hora: se a API recusar por duplicidade (outra sessão criou o mesmo nome no meio-tempo), ele busca o registro existente e o seleciona, em vez de mostrar erro.
 
 ---
 
@@ -227,9 +235,9 @@ POST /projects
 { "name": "Terraplenagem Loteamento Vale Verde", "clientName": "Construtora Vale Verde" }
 ```
 
-`status` aceita `ACTIVE` (padrão) ou `CLOSED`. Para encerrar uma obra: `PATCH /projects/:id` com `{"status": "CLOSED"}`.
+`clientName` é obrigatório. `status` aceita `ACTIVE` (padrão) ou `CLOSED`. Para encerrar uma obra: `PATCH /projects/:id` com `{"status": "CLOSED"}`.
 
-Obra com contas ou recebíveis vinculados **não pode ser removida** (409) — encerre em vez de remover. Apagá-la desvincularia os lançamentos, jogando todo o custo dela para "Despesas administrativas (sem obra)" no relatório.
+Obra com boletos ou contas a receber vinculados **não pode ser removida** (409) — encerre em vez de remover. Apagá-la desvincularia os lançamentos, jogando o custo dela para as despesas administrativas no relatório.
 
 **Filtro:** `GET /projects?status=ACTIVE`
 
@@ -250,7 +258,7 @@ POST /suppliers
 { "name": "Posto Rodoviário Central", "document": "33333333000153" }
 ```
 
-`document` é opcional e aceita 11 dígitos (CPF) ou 14 (CNPJ), sem pontuação.
+`document` é opcional e aceita 11 dígitos (CPF) ou 14 (CNPJ), sem pontuação. Remover fornecedor com boletos vinculados retorna 409.
 
 ---
 
@@ -269,178 +277,161 @@ POST /categories
 { "name": "Combustível" }
 ```
 
-Nome único — duplicado retorna 409.
+Remover categoria com boletos vinculados retorna 409.
 
 ---
 
-## Contas a pagar (`/bills`)
+## Boletos (`/bills`)
 
-| Método | Rota                    | Descrição                        |
-|--------|-------------------------|----------------------------------|
-| POST   | `/bills`                | Cadastra conta                   |
-| GET    | `/bills`                | Lista com filtros                |
-| GET    | `/bills/:id`            | Detalhe                          |
-| PATCH  | `/bills/:id`            | Atualiza                         |
-| DELETE | `/bills/:id`            | Remove (204)                     |
-| POST   | `/bills/:id/payment`    | Registra pagamento               |
-| DELETE | `/bills/:id/payment`    | Estorna pagamento                |
+Os boletos que a empresa recebe e precisa pagar. Vários boletos podem pertencer à mesma NF do fornecedor; um boleto avulso é simplesmente uma NF com um boleto só.
 
-### Cadastro
+| Método | Rota                             | Descrição                                   |
+|--------|----------------------------------|---------------------------------------------|
+| POST   | `/bills/installments`            | Cadastra uma NF com 1 a 60 boletos          |
+| POST   | `/bills`                         | Cadastra um boleto isolado                  |
+| GET    | `/bills`                         | Lista com filtros                           |
+| GET    | `/bills/:id`                     | Detalhe                                     |
+| PATCH  | `/bills/:id`                     | Atualiza um boleto                          |
+| DELETE | `/bills/:id`                     | Remove um boleto (204)                      |
+| DELETE | `/bills/installments/:groupId`   | Remove a NF inteira (204)                   |
+| POST   | `/bills/:id/payment`             | Registra pagamento                          |
+| DELETE | `/bills/:id/payment`             | Estorna pagamento                           |
+
+### Cadastro da NF com os boletos
 
 ```json
-POST /bills
+POST /bills/installments
 {
-  "documentNumber": "NF-1088",
-  "grossAmount": "12000.00",
-  "issueDate": "2026-05-20",
-  "dueDate": "2026-06-20",
+  "documentNumber": "NF-7788",
+  "description": "Rompedor hidráulico para escavadeira",
+  "issueDate": "2026-04-20",
   "companyId": "clx...",
   "projectId": "clx...",
   "categoryId": "clx...",
   "supplierId": "clx...",
-  "withholdings": [
-    { "type": "INSS", "amount": "1320.00" }
+  "totalAmount": "1000.00",
+  "installments": [
+    { "label": "A", "dueDate": "2026-05-15", "amount": "333.34", "digitableLine": "03395.55005 ..." },
+    { "label": "B", "dueDate": "2026-06-15", "amount": "333.33" },
+    { "label": "C", "dueDate": "2026-07-15", "amount": "333.33" }
   ]
 }
 ```
 
-`projectId` é opcional (despesas administrativas não têm obra). `withholdings` é opcional; tipos aceitos: `INSS`, `ISS`, `IRRF`, `PIS_COFINS_CSLL`.
+Todos os boletos são criados **numa única transação**: se um falhar, nenhum é gravado. O vínculo entre os boletos da mesma NF é um **identificador de grupo persistido** (`groupId`), nunca inferido pelo número da NF — NFs de fornecedores diferentes podem ter o mesmo número.
 
-**O líquido é calculado pelo backend** — você envia o bruto e as retenções, a API grava `netAmount = grossAmount - Σ retenções`. Regras validadas:
+Regras validadas:
 
-- soma das retenções deve ser menor que o bruto (400)
-- não pode haver dois lançamentos do mesmo tipo na mesma conta (400)
-- vencimento não pode ser anterior à emissão (400)
+- `documentNumber` (número da NF) e `description` são obrigatórios
+- de 1 a 60 boletos, com rótulos únicos na NF (sem diferenciar maiúsculas)
+- nenhum vencimento anterior à emissão da NF
+- `totalAmount` é **opcional**: se informado, a soma dos boletos precisa ser igual a ele (conferido em `Decimal`); se omitido, a NF vale a soma dos boletos
+- `projectId` é opcional (despesas administrativas não têm obra)
 - empresa, obra, categoria ou fornecedor inexistentes retornam 400 com a mensagem específica
 
-### Pagamento
+Boleto tem um valor só: a API grava `grossAmount = netAmount = amount` e nenhuma retenção. Enviar `grossAmount` ou `withholdings` retorna 400.
+
+`POST /bills` cadastra um boleto isolado, sem grupo, com `documentNumber`, `description`, `issueDate`, `amount`, `dueDate`, `digitableLine` (opcional) e as relações.
+
+### Linha digitável
+
+Opcional. Aceita colagem com espaços e pontos e é gravada só com dígitos. É validada pelo comprimento — 47 dígitos (boleto bancário) ou 48 (arrecadação, começando com 8) — e pelos **dígitos verificadores** de cada campo e do código de barras. Linha inválida retorna 400 com o motivo, por exemplo `"Linha digitável inválida: dígito verificador do 2º campo não confere"`. Para apagar a linha de um boleto, envie `"digitableLine": null` no `PATCH`.
+
+### Edição, pagamento e exclusão
+
+Pagar, estornar e editar são **por boleto**. Boleto pago não pode ser editado; estorne antes com `DELETE /bills/:id/payment`.
 
 ```json
 POST /bills/:id/payment
 { "paymentDate": "2026-06-18" }
 ```
 
-Pagar uma conta já paga retorna 409. Contas vinculadas a uma fatura **não podem ser pagas individualmente** — o pagamento é registrado na fatura (409). Conta paga não pode ser editada; estorne antes com `DELETE /bills/:id/payment`.
+`DELETE /bills/installments/:groupId` remove a NF inteira e é recusado (409) se algum boleto dela estiver pago. Remover o último boleto de uma NF remove também o grupo.
+
+**Boletos antigos com retenções.** Contas lançadas antes do modelo de boletos podem ter retenções e bruto diferente do líquido. Elas continuam no banco como histórico: os demais campos podem ser editados, mas o valor não (409), e o valor do boleto é o líquido.
 
 ### Filtros
 
-`GET /bills?companyId=&projectId=&categoryId=&supplierId=&status=&month=aaaa-mm&regime=accrual|cash`
+`GET /bills?companyId=&projectId=&categoryId=&supplierId=&status=&month=aaaa-mm&dateBasis=issue|due|payment`
 
 - `status`: `PENDING`, `PAID` ou `OVERDUE`
-- `month` + `regime=accrual`: contas pela data de **emissão**
-- `month` + `regime=cash`: contas pela data de **pagamento**
+- `month` + `dateBasis` escolhe a data usada: `issue` (emissão da NF), `due` (vencimento — é o que a tela de Boletos usa) ou `payment` (pagamento)
+- sem `dateBasis`, vale o parâmetro antigo `regime` (`accrual` = emissão, `cash` = pagamento); informar os dois retorna 400
 
 ### Resposta
 
-Além dos campos do registro, a conta traz as relações completas (empresa, obra, categoria, fornecedor, fatura, retenções) e dois campos calculados:
+Além dos campos do registro e das relações, cada boleto traz `effectiveStatus` e o resumo da NF a que pertence:
 
-- `effectiveStatus` — `PENDING`, `PAID` ou `OVERDUE`
-- `effectiveDueDate` — vencimento da conta, ou o da fatura quando ela pertence a uma
+```json
+"group": { "id": "clx...", "position": 2, "billCount": 3, "paidCount": 1, "totalAmount": "1000.00" }
+```
+
+`group` é `null` para boleto isolado. `position` é a ordem do boleto na NF ("boleto B · 2/3") e é recalculada quando um boleto é removido.
 
 ---
 
 ## Faturas (`/invoices`)
 
-Uma fatura agrupa várias contas, possivelmente de meses diferentes, e é paga de uma vez.
+**Fora da interface.** A empresa não registra faturas. O módulo continua no backend por compatibilidade — a decisão de removê-lo é separada —, mas o frontend não o usa e o seed não cria faturas. A migração `20260929120100_detach_bills_from_invoices` desvinculou os boletos que estavam em faturas, preservando o vencimento, o status e a data de pagamento que valiam para cada um. Desde então os boletos se comportam pelas próprias datas.
 
-| Método | Rota                     | Descrição                       |
-|--------|--------------------------|---------------------------------|
-| POST   | `/invoices`              | Cria fatura e vincula as contas |
-| GET    | `/invoices`              | Lista com filtros               |
-| GET    | `/invoices/:id`          | Fatura com as contas e totais   |
-| PATCH  | `/invoices/:id`          | Atualiza (inclusive as contas)  |
-| DELETE | `/invoices/:id`          | Remove e desvincula (204)       |
-| POST   | `/invoices/:id/payment`  | Paga a fatura e todas as contas |
-| DELETE | `/invoices/:id/payment`  | Estorna                         |
-
-```json
-POST /invoices
-{
-  "number": "FAT-2026-08",
-  "companyId": "clx...",
-  "supplierId": "clx...",
-  "dueDate": "2026-09-15",
-  "billIds": ["clx...", "clx...", "clx..."]
-}
-```
-
-Regras de vínculo:
-
-- todas as contas devem pertencer à mesma empresa da fatura (400)
-- conta já vinculada a outra fatura é recusada (409)
-- conta já paga individualmente não pode ser faturada (409)
-- id repetido na lista é recusado (400)
-- a lista não pode ser vazia (400)
-
-Para trocar o conjunto de contas: `PATCH /invoices/:id` com um novo `billIds` — as contas removidas voltam a ser lançamentos avulsos.
-
-### Pagamento
-
-```json
-POST /invoices/:id/payment
-{ "paymentDate": "2026-09-12" }
-```
-
-Marca a fatura e **todas as contas dela** como pagas com essa data, em uma única transação. Fatura paga não pode ser editada, removida nem paga de novo (409) — estorne antes.
-
-### Resposta
-
-```json
-{
-  "id": "clx...",
-  "number": "FAT-2026-08",
-  "dueDate": "2026-09-15T00:00:00.000Z",
-  "status": "PENDING",
-  "effectiveStatus": "PENDING",
-  "billCount": 3,
-  "grossTotal": "13100.00",
-  "withholdingTotal": "0.00",
-  "netTotal": "13100.00",
-  "bills": [ ... ],
-  "company": { ... },
-  "supplier": { ... }
-}
-```
-
-### Filtros
-
-`GET /invoices?companyId=&supplierId=&status=&month=aaaa-mm&regime=accrual|cash`
-
-Para faturas, `accrual` usa a data de vencimento e `cash` a de pagamento.
+As rotas (`POST/GET/PATCH/DELETE /invoices`, `POST/DELETE /invoices/:id/payment`) seguem funcionando e cobertas por `invoice.e2e-spec.ts`. Um boleto dentro de fatura herda o vencimento e o status dela e só pode ser pago pela fatura.
 
 ---
 
-## Contas a receber (`/receivables`)
+## Contas a Receber (`/receivables`)
 
-| Método | Rota                       | Descrição              |
-|--------|----------------------------|------------------------|
-| POST   | `/receivables`             | Cadastra               |
-| GET    | `/receivables`             | Lista com filtros      |
-| GET    | `/receivables/:id`         | Detalhe                |
-| PATCH  | `/receivables/:id`         | Atualiza               |
-| DELETE | `/receivables/:id`         | Remove (204)           |
-| POST   | `/receivables/:id/receipt` | Registra recebimento   |
-| DELETE | `/receivables/:id/receipt` | Estorna recebimento    |
+As NFs de serviço que a própria empresa emite para obras e clientes pagarem. É aqui que moram as **retenções sofridas**: quem sofre retenção é a empresa, como prestadora, quando o tomador paga a NF.
+
+| Método | Rota                          | Descrição                                   |
+|--------|-------------------------------|---------------------------------------------|
+| POST   | `/receivables`                | Cadastra NF de serviço                      |
+| GET    | `/receivables`                | Lista com filtros                           |
+| GET    | `/receivables/client-names`   | Tomadores já usados (`?companyId=`)         |
+| GET    | `/receivables/summary`        | Totais de uma obra (`?projectId=`)          |
+| GET    | `/receivables/:id`            | Detalhe                                     |
+| PATCH  | `/receivables/:id`            | Atualiza                                    |
+| DELETE | `/receivables/:id`            | Remove (204)                                |
+| POST   | `/receivables/:id/receipt`    | Registra recebimento                        |
+| DELETE | `/receivables/:id/receipt`    | Estorna recebimento                         |
 
 ```json
 POST /receivables
 {
-  "description": "Medição 03 - Loteamento Vale Verde",
-  "clientName": "Construtora Vale Verde",
-  "amount": "48000.00",
-  "issueDate": "2026-05-30",
-  "dueDate": "2026-06-30",
+  "number": "NFS-0101",
   "companyId": "clx...",
-  "projectId": "clx..."
+  "clientName": "Construtora Vale Verde",
+  "projectId": "clx...",
+  "competence": "2026-05",
+  "issueDate": "2026-05-30",
+  "description": "Medição 03 - Loteamento Vale Verde",
+  "grossAmount": "48000.00",
+  "withholdings": [
+    { "type": "INSS", "amount": "5280.00" },
+    { "type": "ISS", "amount": "2400.00" }
+  ],
+  "dueDate": "2026-06-30"
 }
 ```
+
+- `number` é único **por empresa emissora** (409 se repetir na mesma empresa; outra empresa pode usar o mesmo número)
+- `clientName` é o tomador (quem paga); `projectId` é **opcional** — há NFs emitidas para clientes sem obra
+- `competence` no formato `aaaa-mm`
+- retenções: `INSS`, `ISS`, `IRRF`, `PIS_COFINS_CSLL`, no máximo uma de cada tipo, cada uma maior que zero, e a soma **menor que o bruto** (400)
+- **o líquido é calculado pelo backend**: `netAmount = grossAmount − Σ retenções`; enviar `netAmount` retorna 400
+- a resposta traz `withholdings` e `withholdingTotal`
+
+As retenções sofridas ficam em `receivable_withholdings`. As retenções antigas, lançadas em contas a pagar antes deste modelo, continuam em `tax_withholdings` como histórico; as duas tabelas usam o mesmo enum de tipos.
 
 ```json
 POST /receivables/:id/receipt
 { "receiptDate": "2026-06-28" }
 ```
 
-**Filtros:** `?companyId=&projectId=&status=&month=aaaa-mm&regime=accrual|cash`
+O valor esperado no recebimento é o **líquido**, e é ele que entra no fluxo de caixa. NF recebida não pode ser editada; estorne antes.
+
+**Filtros:** `?companyId=&projectId=&clientName=&status=&month=aaaa-mm&dateBasis=competence|issue|receipt`. A tela de Contas a Receber usa `dateBasis=competence`. `clientName` compara o tomador exatamente, com os valores devolvidos por `/receivables/client-names`.
+
+**Totais da obra:** `GET /receivables/summary?projectId=` devolve `invoiceCount`, `receivedCount`, `grossInvoiced`, `withholdingTotal`, `netInvoiced`, `received` (líquido das NFs recebidas) e `outstanding` (líquido das NFs pendentes) — é o que a tela de detalhe da obra mostra.
 
 ---
 
@@ -458,11 +449,16 @@ As três rotas aceitam os mesmos parâmetros:
 
 Período máximo de 36 meses. `from` posterior a `to` retorna 400. A resposta traz `consolidated: true` quando nenhuma entidade foi filtrada.
 
-### Fluxo de caixa — `GET /reports/cashflow`
+### Qual data cada regime usa
 
-```
-GET /reports/cashflow?from=2026-05&to=2026-09&regime=accrual
-```
+| Lançamento       | Competência (`accrual`)           | Caixa (`cash`)            |
+|------------------|-----------------------------------|---------------------------|
+| NF de serviço    | mês de **competência** da NF      | data de recebimento       |
+| Boleto           | data de **emissão** da NF         | data de pagamento         |
+
+Os testes de `report.e2e-spec.ts` provam, mês a mês e nos dois regimes, que os totais do fluxo de caixa são iguais à soma das listagens de Boletos (`dateBasis=issue` / `payment`) e de Contas a Receber (`dateBasis=competence` / `receipt`).
+
+### Fluxo de caixa — `GET /reports/cashflow`
 
 ```json
 {
@@ -473,39 +469,43 @@ GET /reports/cashflow?from=2026-05&to=2026-09&regime=accrual
   "months": [
     {
       "month": "2026-05",
-      "inflow": "48000.00",
+      "inflow": "40320.00",
+      "inflowGross": "48000.00",
+      "inflowWithholdings": "7680.00",
       "outflow": "19130.00",
-      "outflowGross": "20450.00",
-      "withholdings": "1320.00",
-      "balance": "28870.00",
-      "accumulatedBalance": "28870.00"
+      "balance": "21190.00",
+      "accumulatedBalance": "21190.00"
     }
   ],
-  "totals": { "inflow": "...", "outflow": "...", "balance": "..." }
+  "totals": { "inflow": "...", "inflowGross": "...", "inflowWithholdings": "...", "outflow": "...", "balance": "..." }
 }
 ```
 
-`outflow` é o valor **líquido** (o que sai para o fornecedor). `outflowGross` e `withholdings` aparecem ao lado para que o imposto retido não fique invisível — ele também vira desembolso depois.
+`inflow` é o **líquido** das NFs de serviço; `inflowGross` e `inflowWithholdings` mostram o faturado bruto e as retenções sofridas. `outflow` é o valor dos boletos. Meses sem movimento aparecem zerados, e `accumulatedBalance` acumula desde o início do período consultado.
 
-Meses sem movimento aparecem zerados, e `accumulatedBalance` acumula desde o início do período consultado.
+### Retenções sofridas — `GET /reports/withholdings`
 
-### Retenções — `GET /reports/withholdings`
-
-Traz o total retido por entidade e por tipo de imposto, mais a lista das notas que geraram retenção (com bruto, líquido e o detalhe de cada imposto) para conferência.
+As retenções sofridas nas NFs de serviço — o valor que a contabilidade compensa.
 
 ```json
 {
   "companies": [
-    { "legalName": "...", "billCount": 1, "total": "1320.00", "byType": [{ "type": "INSS", "amount": "1320.00" }] }
+    { "companyId": "clx...", "legalName": "...", "cnpj": "...", "invoiceCount": 2, "total": "7680.00", "byType": [{ "type": "INSS", "amount": "5280.00" }] }
   ],
-  "bills": [ ... ],
-  "totals": { "billCount": 3, "total": "2094.00", "byType": [ ... ] }
+  "projects": [
+    { "projectId": "clx...", "name": "...", "invoiceCount": 2, "total": "7680.00", "byType": [ ... ] }
+  ],
+  "invoices": [
+    { "number": "NFS-0101", "legalName": "...", "projectName": "...", "clientName": "...", "competence": "...", "grossAmount": "48000.00", "withholdingTotal": "7680.00", "netAmount": "40320.00", "amountsByType": { "INSS": "5280.00", "ISS": "2400.00", "IRRF": "0.00", "PIS_COFINS_CSLL": "0.00" } }
+  ],
+  "totals": { "invoiceCount": 2, "total": "...", "grossAmount": "...", "netAmount": "...", "byType": [ ... ] },
+  "legacy": { "bills": [ ... ], "totals": { "billCount": 2, "total": "774.00", "byType": [ ... ] } }
 }
 ```
 
-### Custo por obra — `GET /reports/project-costs`
+`legacy` traz, em separado, as retenções antigas lançadas em boletos antes deste modelo. Elas **não entram** em `totals` — não são retenções sofridas — e aparecem na tela num bloco recolhido de histórico, com exportação própria.
 
-Obras ordenadas da mais cara para a mais barata, com participação percentual e quebra por categoria. Contas sem obra são agrupadas em **"Despesas administrativas (sem obra)"**.
+### Resultado por obra — `GET /reports/project-results`
 
 ```json
 {
@@ -513,38 +513,22 @@ Obras ordenadas da mais cara para a mais barata, com participação percentual e
     {
       "projectId": "clx...",
       "name": "Pavimentação Rodovia Municipal",
-      "clientName": "Prefeitura Municipal",
-      "status": "ACTIVE",
-      "billCount": 2,
-      "grossTotal": "27400.00",
-      "netTotal": "26080.00",
-      "shareOfTotal": "30.89",
-      "byCategory": [
-        { "categoryId": "clx...", "name": "Locação de Equipamentos", "billCount": 1, "grossTotal": "15400.00" }
-      ]
+      "revenue": { "invoiceCount": 1, "grossAmount": "65000.00", "withholdingTotal": "4225.00", "netAmount": "60775.00" },
+      "received": "60775.00",
+      "outstanding": "0.00",
+      "cost": { "billCount": 2, "total": "27400.00", "byCategory": [ { "name": "Locação de Equipamentos", "billCount": 1, "total": "15400.00" } ] },
+      "result": "33375.00"
     }
   ],
-  "totals": { "billCount": 13, "grossTotal": "88700.00", "netTotal": "86606.00" }
+  "administrative": { "billCount": 3, "total": "7100.00", "byCategory": [ ... ] },
+  "unassignedRevenue": { "revenue": { ... }, "received": "...", "outstanding": "..." },
+  "totals": { "revenue": { ... }, "received": "...", "outstanding": "...", "projectCost": "...", "administrativeCost": "...", "cost": "...", "result": "..." }
 }
 ```
 
-O custo por obra usa o **valor bruto** — o custo real da obra é a nota inteira, não apenas a parte paga ao fornecedor. O líquido vem junto para comparação.
-
----
-
-## Como as faturas afetam o fluxo de caixa
-
-Esta é a regra menos óbvia do sistema.
-
-Uma conta **avulsa** entra no fluxo de caixa pela data de emissão (competência) ou de pagamento (caixa). Uma conta **vinculada a uma fatura** ignora as próprias datas e passa a contar pelo **vencimento da fatura** (competência) ou pelo **pagamento da fatura** (caixa).
-
-Exemplo: três notas emitidas em junho, julho e agosto, agrupadas numa fatura que vence em 15/09.
-
-| Visão                      | Junho | Julho | Agosto | Setembro |
-|----------------------------|-------|-------|--------|----------|
-| Antes de faturar (competência) | 4.800 | 5.200 | 3.100  | —        |
-| Depois de faturar (competência)| —     | —     | —      | 13.100   |
-
-O total do período não muda — o valor apenas se desloca para o mês em que o dinheiro efetivamente será tratado. Isso vale para a listagem de contas (`GET /bills?month=`) e para os três relatórios.
-
-O mesmo se aplica ao status: uma conta dentro de uma fatura herda o vencimento e o status dela, refletidos em `effectiveStatus` e `effectiveDueDate`.
+- **receita**: NFs de serviço da obra no período (bruto, retenções e líquido)
+- **recebido**: líquido das NFs recebidas **dentro do período**, qualquer que seja a competência
+- **custo**: boletos lançados na obra no período, com quebra por categoria; boletos antigos com retenções entram pelo valor bruto
+- **resultado** = recebido − custo
+- `administrative` agrupa os boletos sem obra: ficam fora do resultado das obras, mas somam no consolidado; `unassignedRevenue` faz o mesmo com as NFs sem obra
+- consolidado: `totals.result` = recebido total − (custo das obras + despesas administrativas)

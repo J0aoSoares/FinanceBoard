@@ -36,6 +36,7 @@ export function CreatableEntitySelect({
   withAsterisk,
   disabled,
   size,
+  clearable = false,
 }: CreatableEntitySelectProps) {
   const combobox = useCombobox({
     onDropdownClose: () => combobox.resetSelectedOption(),
@@ -92,7 +93,10 @@ export function CreatableEntitySelect({
   const handleBlur = (event: FocusEvent<HTMLInputElement>) => {
     combobox.closeDropdown();
     if (!creating) {
-      if (exactMatch) {
+      if (clearable && search !== null && search.trim() === '') {
+        setSearch(null);
+        onChange?.(null);
+      } else if (exactMatch) {
         select(exactMatch.id);
       } else {
         setSearch(null);

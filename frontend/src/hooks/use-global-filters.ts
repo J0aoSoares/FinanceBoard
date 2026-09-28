@@ -16,6 +16,7 @@ export interface ScreenFilters {
   projectId?: string;
   categoryId?: string;
   supplierId?: string;
+  clientName?: string;
   status?: EffectiveStatus;
 }
 
@@ -47,6 +48,7 @@ export function useGlobalFilters() {
       projectId: read('projectId'),
       categoryId: read('categoryId'),
       supplierId: read('supplierId'),
+      clientName: read('clientName'),
       status: STATUSES.includes(status as EffectiveStatus)
         ? (status as EffectiveStatus)
         : undefined,
@@ -75,7 +77,13 @@ export function useGlobalFilters() {
     setSearchParams(
       (previous) => {
         const next = new URLSearchParams(previous);
-        for (const key of ['projectId', 'categoryId', 'supplierId', 'status']) {
+        for (const key of [
+          'projectId',
+          'categoryId',
+          'supplierId',
+          'clientName',
+          'status',
+        ]) {
           next.delete(key);
         }
         return next;

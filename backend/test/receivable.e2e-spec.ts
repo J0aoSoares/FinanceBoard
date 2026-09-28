@@ -11,7 +11,7 @@ import {
   receivablePayload,
 } from './helpers/fixtures';
 
-describe('Notas de serviço (/receivables)', () => {
+describe('Contas a receber: NFs de serviço (/receivables)', () => {
   let context: TestContext;
   let fixtures: BaseFixtures;
 
@@ -36,7 +36,7 @@ describe('Notas de serviço (/receivables)', () => {
   ];
 
   describe('cadastro', () => {
-    it('cadastra uma nota sem retenção com líquido igual ao bruto', async () => {
+    it('cadastra uma NF de serviço sem retenção com líquido igual ao bruto', async () => {
       const response = await server()
         .post('/receivables')
         .send(receivablePayload(fixtures))
@@ -146,13 +146,19 @@ describe('Notas de serviço (/receivables)', () => {
         .expect(400);
     });
 
-    it('recusa nota sem obra', async () => {
+    it('aceita NF de serviço sem obra, para cliente avulso', async () => {
       const response = await server()
         .post('/receivables')
-        .send(receivablePayload(fixtures, { projectId: undefined }))
-        .expect(400);
+        .send(
+          receivablePayload(fixtures, {
+            projectId: undefined,
+            clientName: 'Cliente Avulso',
+          }),
+        )
+        .expect(201);
 
-      expect(response.body.message).toContain('Obra é obrigatória');
+      expect(response.body.projectId).toBeNull();
+      expect(response.body.project).toBeNull();
     });
 
     it('recusa número repetido na mesma empresa e aceita em outra', async () => {
@@ -166,7 +172,7 @@ describe('Notas de serviço (/receivables)', () => {
         .send(receivablePayload(fixtures, { number: ' NFS-001 ' }))
         .expect(409);
       expect(duplicated.body.message).toBe(
-        'Já existe uma nota com esse número nesta empresa',
+        'Já existe uma NF de serviço com esse número nesta empresa',
       );
 
       await server()
@@ -219,7 +225,7 @@ describe('Notas de serviço (/receivables)', () => {
     });
   });
 
-  it('marca como OVERDUE nota vencida', async () => {
+  it('marca como OVERDUE NF de serviço vencida', async () => {
     const response = await server()
       .post('/receivables')
       .send(
@@ -294,7 +300,7 @@ describe('Notas de serviço (/receivables)', () => {
       expect(regrossed.body.netAmount).toBe('5925');
     });
 
-    it('recusa editar nota já recebida ou tirar a obra', async () => {
+    it('aceita tirar a obra e recusa editar NF de serviço já recebida', async () => {
       const created = await server()
         .post('/receivables')
         .send(receivablePayload(fixtures))
@@ -303,8 +309,8 @@ describe('Notas de serviço (/receivables)', () => {
       const withoutProject = await server()
         .patch(`/receivables/${created.body.id}`)
         .send({ projectId: null })
-        .expect(400);
-      expect(withoutProject.body.message).toBe('Obra é obrigatória');
+        .expect(200);
+      expect(withoutProject.body.projectId).toBeNull();
 
       await server()
         .post(`/receivables/${created.body.id}/receipt`)
@@ -314,11 +320,11 @@ describe('Notas de serviço (/receivables)', () => {
         .send({ description: 'Editada' })
         .expect(409);
       expect(paid.body.message).toBe(
-        'Não é possível editar uma nota já recebida; estorne o recebimento antes',
+        'Não é possível editar uma NF de serviço já recebida; estorne o recebimento antes',
       );
     });
 
-    it('exige obra e número ao editar nota antiga sem esses dados', async () => {
+    it('exige só o número ao editar NF de serviço antiga sem número', async () => {
       const legacy = await context.prisma.receivable.create({
         data: {
           description: 'Recebível antigo',
@@ -335,29 +341,20 @@ describe('Notas de serviço (/receivables)', () => {
       const listed = await server().get('/receivables').expect(200);
       expect(listed.body[0]).toMatchObject({ number: null, projectId: null });
 
-      const missingProject = await server()
+      const missingNumber = await server()
         .patch(`/receivables/${legacy.id}`)
         .send({ description: 'Recebível antigo revisado' })
         .expect(400);
-      expect(missingProject.body.message).toBe('Obra é obrigatória');
-
-      const missingNumber = await server()
-        .patch(`/receivables/${legacy.id}`)
-        .send({ projectId: fixtures.projectA })
-        .expect(400);
-      expect(missingNumber.body.message).toBe('Número da nota é obrigatório');
+      expect(missingNumber.body.message).toBe('Número da NF é obrigatório');
 
       const fixed = await server()
         .patch(`/receivables/${legacy.id}`)
-        .send({ projectId: fixtures.projectA, number: 'NFS-ANT' })
+        .send({ number: 'NFS-ANT' })
         .expect(200);
-      expect(fixed.body).toMatchObject({
-        number: 'NFS-ANT',
-        projectId: fixtures.projectA,
-      });
+      expect(fixed.body).toMatchObject({ number: 'NFS-ANT', projectId: null });
     });
 
-    it('remove a nota e suas retenções em cascata', async () => {
+    it('remove a NF de serviço e suas retenções em cascata', async () => {
       const created = await server()
         .post('/receivables')
         .send(receivablePayload(fixtures, { withholdings }))
@@ -418,6 +415,44 @@ describe('Notas de serviço (/receivables)', () => {
           .expect(200);
         expect(response.body).toHaveLength(expected);
       }
+    });
+
+    it('filtra por tomador e lista os tomadores já usados', async () => {
+      await server()
+        .post('/receivables')
+        .send(
+          receivablePayload(fixtures, {
+            number: 'NFS-900',
+            clientName: 'Cliente Avulso',
+            projectId: undefined,
+          }),
+        )
+        .expect(201);
+      await server()
+        .post('/receivables')
+        .send(
+          receivablePayload(fixtures, {
+            number: 'NFS-901',
+            clientName: 'Cliente Avulso',
+            companyId: fixtures.companyB,
+          }),
+        )
+        .expect(201);
+
+      const filtered = await server()
+        .get('/receivables?clientName=Cliente%20Avulso')
+        .expect(200);
+      expect(
+        filtered.body.map((note: { number: string }) => note.number).sort(),
+      ).toEqual(['NFS-900', 'NFS-901']);
+
+      const names = await server().get('/receivables/client-names').expect(200);
+      expect(names.body).toEqual(['Cliente Alfa', 'Cliente Avulso']);
+
+      const byCompany = await server()
+        .get(`/receivables/client-names?companyId=${fixtures.companyB}`)
+        .expect(200);
+      expect(byCompany.body).toEqual(['Cliente Avulso']);
     });
 
     it('recusa regime e dateBasis juntos', async () => {
@@ -489,8 +524,8 @@ describe('Notas de serviço (/receivables)', () => {
     });
   });
 
-  it('retorna 404 para nota inexistente', async () => {
+  it('retorna 404 para NF de serviço inexistente', async () => {
     const response = await server().get('/receivables/inexistente').expect(404);
-    expect(response.body.message).toBe('Nota de serviço não encontrada');
+    expect(response.body.message).toBe('NF de serviço não encontrada');
   });
 });

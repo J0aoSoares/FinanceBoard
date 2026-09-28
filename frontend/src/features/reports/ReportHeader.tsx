@@ -76,7 +76,7 @@ export function ReportHeader({
       {report?.regime === 'cash' && (
         <Alert color="blue" variant="light" icon={<IconInfoCircle size={18} />}>
           No regime de caixa só entram valores já liquidados: boletos contam
-          pela data de pagamento e notas de serviço pela data de recebimento.
+          pela data de pagamento e NFs de serviço pela data de recebimento.
           Títulos em aberto não aparecem — o relatório fica legitimamente menor
           que em competência.
         </Alert>

@@ -63,7 +63,7 @@ export function ProjectDetailPage() {
         </Button>
         {canWrite && project && (
           <Button leftSection={<IconPlus size={16} />} onClick={openNew}>
-            Nova nota de serviço
+            Nova NF de serviço
           </Button>
         )}
       </Group>
@@ -124,7 +124,7 @@ export function ProjectDetailPage() {
                   </Card>
                   <Card
                     label="Total recebido"
-                    hint={`${summary.data.receivedCount} de ${summary.data.invoiceCount} notas recebidas`}
+                    hint={`${summary.data.receivedCount} de ${summary.data.invoiceCount} NFs recebidas`}
                   >
                     <MoneyText
                       value={summary.data.received}
@@ -135,7 +135,7 @@ export function ProjectDetailPage() {
                   </Card>
                   <Card
                     label="Saldo a receber"
-                    hint="Líquido das notas pendentes"
+                    hint="Líquido das NFs pendentes"
                   >
                     <MoneyText
                       value={summary.data.outstanding}
@@ -148,12 +148,12 @@ export function ProjectDetailPage() {
             </QueryBoundary>
 
             <Stack gap="xs">
-              <Text fw={600}>Notas de serviço emitidas</Text>
+              <Text fw={600}>NFs de serviço emitidas</Text>
               <QueryBoundary
                 isLoading={receivables.isLoading}
                 isError={receivables.isError}
                 error={receivables.error}
-                errorTitle="Não foi possível carregar as notas da obra"
+                errorTitle="Não foi possível carregar as NFs da obra"
               >
                 <ReceivablesTable
                   receivables={receivables.data ?? []}

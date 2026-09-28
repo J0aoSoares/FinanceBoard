@@ -2,7 +2,7 @@
 
 # FinanceBoard
 
-Controle financeiro para empresas de terraplenagem e transporte — contas a pagar, faturas, retenções de impostos, fluxo de caixa por competência e por caixa, e custo por obra.
+Controle financeiro para empresas de terraplenagem e transporte — boletos a pagar, NFs de serviço a receber com as retenções sofridas, fluxo de caixa por competência e por caixa, e resultado por obra.
 
 [![NestJS](https://img.shields.io/badge/NestJS-10-E0234E?style=for-the-badge&logo=nestjs&logoColor=white)](https://nestjs.com)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.6-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://typescriptlang.org)
@@ -16,14 +16,14 @@ Controle financeiro para empresas de terraplenagem e transporte — contas a pag
 
 ## Sobre o projeto
 
-A operação acontece sob dois CNPJs — uma empresa de terraplenagem e locações e outra de transporte e serviços. Toda conta pertence a uma dessas entidades, e os relatórios podem ser vistos por entidade isolada ou consolidados.
+A operação acontece sob dois CNPJs — uma empresa de terraplenagem e locações e outra de transporte e serviços. Todo boleto e toda NF de serviço pertencem a uma dessas entidades, e os relatórios podem ser vistos por entidade isolada ou consolidados.
 
 O sistema resolve quatro problemas que uma planilha não resolve bem:
 
-- **Competência x caixa.** A mesma base de dados conta duas histórias: quando a despesa foi gerada (data de emissão) e quando o dinheiro saiu (data de pagamento). O usuário escolhe qual visão está vendo.
-- **Faturas que atravessam meses.** Uma fatura agrupa contas de meses diferentes. Essas contas saem do fluxo de caixa do mês de emissão delas e passam a contar no mês em que a fatura vence ou é paga — sem duplicar nem sumir com valor nenhum.
-- **Retenções de impostos.** O valor bruto da nota difere do valor efetivamente pago. O sistema guarda bruto, cada retenção (INSS, ISS, IRRF, PIS/COFINS/CSLL) e o líquido, com relatório por período e por entidade.
-- **Custo por obra.** Quanto cada obra consumiu no período, com quebra por categoria e comparação entre obras. Despesas administrativas sem obra aparecem em um grupo separado.
+- **Competência x caixa.** A mesma base de dados conta duas histórias: quando a receita e a despesa foram geradas (competência da NF de serviço e emissão da NF do fornecedor) e quando o dinheiro entrou ou saiu (recebimento e pagamento). O usuário escolhe qual visão está vendo.
+- **Vários boletos da mesma NF.** Uma compra paga em vários boletos é cadastrada de uma vez, e cada boleto aparece no mês do próprio vencimento, com a posição na NF ("boleto C · 3/10") e o progresso de pagamento. A linha digitável é validada pelos dígitos verificadores.
+- **Retenções sofridas.** Quando o tomador paga a NF de serviço, retém impostos (INSS, ISS, IRRF, PIS/COFINS/CSLL). O sistema guarda o bruto, cada retenção e o líquido — que é o que entra no caixa —, com relatório por empresa, por tipo e por obra para a contabilidade compensar.
+- **Resultado por obra.** Receita das NFs emitidas, recebido no período, custo dos boletos lançados na obra (por categoria) e o resultado. Boletos sem obra aparecem como despesas administrativas, fora das obras mas somados no consolidado.
 
 ---
 
@@ -110,12 +110,12 @@ FinanceBoard/
 │       ├── project/             # Obras / centros de custo
 │       ├── supplier/            # Fornecedores
 │       ├── category/            # Categorias de despesa
-│       ├── bill/                # Contas a pagar
-│       ├── invoice/             # Faturas (agrupam contas)
-│       ├── receivable/          # Contas a receber
-│       ├── report/              # Fluxo de caixa, retenções, custo por obra
+│       ├── bill/                # Boletos (NF do fornecedor com um ou mais boletos)
+│       ├── invoice/             # Faturas (mantidas no backend, fora da interface)
+│       ├── receivable/          # Contas a receber (NFs de serviço e retenções sofridas)
+│       ├── report/              # Fluxo de caixa, retenções sofridas, resultado por obra
 │       ├── prisma/              # PrismaService (conexão)
-│       └── common/              # Utilitários de período
+│       └── common/              # Período, linha digitável, nome normalizado
 └── frontend/
     └── src/
         ├── api/                 # Tipos e chamadas por recurso
@@ -123,11 +123,11 @@ FinanceBoard/
         ├── components/          # Primitivos: campos, exibição, layout, navegação
         ├── features/
         │   ├── auth/            # Tela de login
-        │   ├── bills/           # Contas a pagar
-        │   ├── invoices/        # Faturas: lista, detalhe, composição
-        │   ├── receivables/     # Contas a receber
-        │   ├── reports/         # Fluxo de caixa, retenções, custo por obra
-        │   ├── companies/ projects/ suppliers/ categories/   # Cadastros
+        │   ├── bills/           # Boletos: NF com vários boletos, listagem por vencimento
+        │   ├── receivables/     # Contas a receber: NFs de serviço
+        │   ├── reports/         # Fluxo de caixa, retenções sofridas, resultado por obra
+        │   ├── projects/        # Obras, com o detalhe de faturado e recebido
+        │   ├── companies/ suppliers/ categories/   # Cadastros
         │   └── users/           # Usuários e senhas (ADMIN)
         ├── hooks/               # Filtros globais e queries
         ├── lib/                 # money, date, http — as camadas críticas
@@ -135,7 +135,7 @@ FinanceBoard/
         └── theme/               # Tema Mantine lendo os tokens
 ```
 
-O backend é REST puro e não assume nada sobre o frontend. A interface cobre toda a API: contas a pagar, faturas (composição e pagamento em cascata), contas a receber, os três relatórios e os cadastros (empresas, obras, fornecedores, categorias e usuários), com login por JWT e restrição por papel.
+O backend é REST puro e não assume nada sobre o frontend. A interface cobre boletos, contas a receber, os três relatórios e os cadastros (empresas, obras, fornecedores, categorias e usuários), com login por JWT e restrição por papel. Fornecedor, categoria e obra podem ser cadastrados na hora, digitando o nome no próprio formulário. O módulo de faturas continua no backend, mas saiu da interface.
 
 ---
 
