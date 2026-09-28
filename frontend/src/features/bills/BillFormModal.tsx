@@ -1,7 +1,6 @@
 import {
   Alert,
   Button,
-  Checkbox,
   Divider,
   Grid,
   Group,
@@ -17,24 +16,17 @@ import { DateField } from '../../components/fields/DateField';
 import { MoneyInput } from '../../components/fields/MoneyInput';
 import { ProjectSelect } from '../../components/fields/ProjectSelect';
 import { SupplierSelect } from '../../components/fields/SupplierSelect';
-import {
-  useCreateBill,
-  useCreateInstallments,
-  useUpdateBill,
-} from '../../hooks/use-bills';
+import { useCreateInstallments, useUpdateBill } from '../../hooks/use-bills';
 import type { Bill } from '../../api/types';
 import {
   billFormValidation,
+  billLabel,
   billToFormValues,
-  buildCreatePayload,
-  buildInstallmentRows,
   buildInstallmentsPayload,
   buildUpdatePayload,
   emptyBillForm,
   hasLegacyWithholdings,
-  redistributeAmounts,
   type BillFormValues,
-  type InstallmentSettings,
 } from './bill-form';
 import { InstallmentsEditor } from './InstallmentsEditor';
 
@@ -49,7 +41,6 @@ export function BillFormModal({
   defaultCompanyId,
   onClose,
 }: BillFormModalProps) {
-  const createBill = useCreateBill();
   const createInstallments = useCreateInstallments();
   const updateBill = useUpdateBill();
 
@@ -64,53 +55,9 @@ export function BillFormModal({
 
   const values = form.getValues();
   const isEditing = bill !== null;
-  const invoiced = isEditing && bill.invoice !== null;
   const legacy = hasLegacyWithholdings(bill);
-  const pending =
-    createBill.isPending ||
-    createInstallments.isPending ||
-    updateBill.isPending;
-
-  const regenerate = (
-    settings: InstallmentSettings,
-    total = form.getValues().amount,
-  ) => {
-    form.setFieldValue(
-      'installments',
-      buildInstallmentRows(settings, total, form.getValues().installments),
-    );
-  };
-
-  const updateSettings = (patch: Partial<InstallmentSettings>) => {
-    const settings = { ...form.getValues().settings, ...patch };
-    form.setFieldValue('settings', settings);
-    regenerate(settings);
-  };
-
-  const toggleSplit = (split: boolean) => {
-    form.setFieldValue('split', split);
-    if (!split) {
-      return;
-    }
-    const current = form.getValues();
-    const settings = {
-      ...current.settings,
-      firstDueDate: current.settings.firstDueDate ?? current.dueDate,
-    };
-    form.setFieldValue('settings', settings);
-    regenerate(settings);
-  };
-
-  const amountProps = form.getInputProps('amount');
-  const changeAmount = (next: string) => {
-    amountProps.onChange(next);
-    if (form.getValues().split) {
-      form.setFieldValue(
-        'installments',
-        redistributeAmounts(form.getValues().installments, next),
-      );
-    }
-  };
+  const pending = createInstallments.isPending || updateBill.isPending;
+  const count = values.installments.length;
 
   const handleSubmit = (submitted: BillFormValues) => {
     const onSuccess = () => onClose();
@@ -120,39 +67,31 @@ export function BillFormModal({
         { id: bill.id, input: buildUpdatePayload(submitted) },
         { onSuccess },
       );
-    } else if (submitted.split) {
+    } else {
       createInstallments.mutate(buildInstallmentsPayload(submitted), {
         onSuccess,
       });
-    } else {
-      createBill.mutate(buildCreatePayload(submitted), { onSuccess });
     }
   };
-
-  const title = isEditing
-    ? bill.installmentLabel
-      ? `Editar boleto ${bill.installmentLabel}`
-      : 'Editar boleto'
-    : 'Novo boleto';
 
   return (
     <Modal
       opened
       onClose={onClose}
-      title={title}
-      size={values.split ? 'xl' : 'lg'}
+      title={isEditing ? `Editar ${billLabel(bill)}` : 'Nova NF de boletos'}
+      size="xl"
       centered
     >
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="md">
-          {invoiced && (
+          {isEditing && (bill.group?.billCount ?? 1) > 1 && (
             <Alert
               color="blue"
               variant="light"
               icon={<IconInfoCircle size={18} />}
             >
-              Este boleto pertence à fatura {bill.invoice?.number}. A empresa só
-              pode ser trocada removendo-o da fatura.
+              Este boleto faz parte de uma NF com {bill.group?.billCount}{' '}
+              boletos. As alterações valem só para ele.
             </Alert>
           )}
           {legacy && (
@@ -161,7 +100,7 @@ export function BillFormModal({
               variant="light"
               icon={<IconInfoCircle size={18} />}
             >
-              Esta conta tem retenções do modelo anterior; o valor não pode ser
+              Este boleto tem retenções do modelo anterior; o valor não pode ser
               alterado. Os demais campos podem ser editados.
             </Alert>
           )}
@@ -181,10 +120,34 @@ export function BillFormModal({
                 placeholder="Selecione a empresa"
                 withAsterisk
                 clearable={false}
-                disabled={invoiced}
                 {...form.getInputProps('companyId')}
               />
             </Grid.Col>
+
+            <Grid.Col span={{ base: 12, sm: 4 }}>
+              <TextInput
+                label="Número da NF"
+                placeholder="NF-1088"
+                withAsterisk
+                {...form.getInputProps('documentNumber')}
+              />
+            </Grid.Col>
+            <Grid.Col span={{ base: 12, sm: 4 }}>
+              <DateField
+                label="Emissão da NF"
+                withAsterisk
+                {...form.getInputProps('issueDate')}
+              />
+            </Grid.Col>
+            {!isEditing && (
+              <Grid.Col span={{ base: 12, sm: 4 }}>
+                <MoneyInput
+                  label="Valor total da NF"
+                  description="Opcional"
+                  {...form.getInputProps('totalAmount')}
+                />
+              </Grid.Col>
+            )}
 
             <Grid.Col span={12}>
               <TextInput
@@ -197,7 +160,8 @@ export function BillFormModal({
 
             <Grid.Col span={{ base: 12, sm: 6 }}>
               <CategorySelect
-                placeholder="Selecione a categoria"
+                creatable
+                placeholder="Digite ou selecione a categoria"
                 withAsterisk
                 clearable={false}
                 {...form.getInputProps('categoryId')}
@@ -210,73 +174,15 @@ export function BillFormModal({
                 {...form.getInputProps('projectId')}
               />
             </Grid.Col>
-
-            <Grid.Col span={{ base: 12, sm: 6 }}>
-              <DateField
-                label="Data da compra"
-                withAsterisk
-                {...form.getInputProps('issueDate')}
-              />
-            </Grid.Col>
-            <Grid.Col span={{ base: 12, sm: 6 }}>
-              <MoneyInput
-                label={values.split ? 'Valor total' : 'Valor'}
-                withAsterisk
-                disabled={legacy}
-                {...amountProps}
-                onChange={changeAmount}
-              />
-            </Grid.Col>
-
-            {!values.split && (
-              <>
-                <Grid.Col span={{ base: 12, sm: 6 }}>
-                  <DateField
-                    label="Vencimento"
-                    withAsterisk
-                    {...form.getInputProps('dueDate')}
-                  />
-                </Grid.Col>
-                <Grid.Col span={{ base: 12, sm: 6 }}>
-                  <TextInput
-                    label="Linha digitável"
-                    description="Opcional. Pode colar com espaços e pontos."
-                    placeholder="00000.00000 00000.000000 00000.000000 0 00000000000000"
-                    classNames={{ input: 'fb-numeric' }}
-                    {...form.getInputProps('digitableLine')}
-                  />
-                </Grid.Col>
-              </>
-            )}
           </Grid>
 
-          {!isEditing && (
-            <>
-              <Divider />
-              <Checkbox
-                label="Dividir em boletos"
-                description="Cadastra de uma vez uma compra paga em vários boletos"
-                checked={values.split}
-                onChange={(event) => toggleSplit(event.currentTarget.checked)}
-              />
-              {values.split && (
-                <InstallmentsEditor
-                  form={form}
-                  onSettingsChange={updateSettings}
-                  onRedistribute={() => {
-                    form.setFieldValue(
-                      'installments',
-                      redistributeAmounts(
-                        form.getValues().installments,
-                        form.getValues().amount,
-                      ),
-                    );
-                    form.validateField('amount');
-                  }}
-                />
-              )}
-            </>
-          )}
+          <Divider />
+
+          <InstallmentsEditor
+            form={form}
+            editing={isEditing}
+            amountLocked={legacy}
+          />
 
           <Group justify="flex-end" gap="xs">
             <Button variant="default" onClick={onClose} disabled={pending}>
@@ -285,9 +191,9 @@ export function BillFormModal({
             <Button type="submit" loading={pending}>
               {isEditing
                 ? 'Salvar alterações'
-                : values.split
-                  ? `Cadastrar ${values.installments.length} boletos`
-                  : 'Cadastrar'}
+                : count === 1
+                  ? 'Cadastrar NF com 1 boleto'
+                  : `Cadastrar NF com ${count} boletos`}
             </Button>
           </Group>
         </Stack>

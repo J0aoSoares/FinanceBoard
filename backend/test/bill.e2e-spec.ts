@@ -21,7 +21,7 @@ const COLLECTION_LINE_MOD10 =
 const COLLECTION_LINE_MOD11 =
   '858000000674890000022027610100000008000000000027';
 
-describe('Contas a pagar (/bills)', () => {
+describe('Boletos (/bills)', () => {
   let context: TestContext;
   let fixtures: BaseFixtures;
 
@@ -53,7 +53,7 @@ describe('Contas a pagar (/bills)', () => {
       expect(response.body.taxWithholdings).toEqual([]);
       expect(response.body.status).toBe('PENDING');
       expect(response.body.description).toBe('Boleto 001');
-      expect(response.body.documentNumber).toBe('Boleto 001');
+      expect(response.body.documentNumber).toBe('NF-001');
       expect(response.body.group).toBeNull();
     });
 
@@ -75,7 +75,7 @@ describe('Contas a pagar (/bills)', () => {
       expect(await context.prisma.bill.count()).toBe(0);
     });
 
-    it('cadastra conta sem obra (despesa administrativa)', async () => {
+    it('cadastra boleto sem obra (despesa administrativa)', async () => {
       const response = await server()
         .post('/bills')
         .send(billPayload(fixtures, { projectId: undefined }))
@@ -91,7 +91,7 @@ describe('Contas a pagar (/bills)', () => {
         .expect(400);
     });
 
-    it('recusa vencimento anterior à data da compra', async () => {
+    it('recusa vencimento anterior à emissão da NF', async () => {
       const response = await server()
         .post('/bills')
         .send(
@@ -103,7 +103,7 @@ describe('Contas a pagar (/bills)', () => {
         .expect(400);
 
       expect(response.body.message).toBe(
-        'Data de vencimento não pode ser anterior à data da compra',
+        'Data de vencimento não pode ser anterior à emissão da NF',
       );
     });
 
@@ -248,7 +248,7 @@ describe('Contas a pagar (/bills)', () => {
     });
   });
 
-  describe('contas antigas com retenções', () => {
+  describe('boletos antigos com retenções', () => {
     it('preserva bruto, líquido e retenções ao editar a descrição', async () => {
       const legacy = await createLegacyBill(context.prisma, fixtures, {
         documentNumber: 'NF-ANTIGA',
@@ -267,7 +267,7 @@ describe('Contas a pagar (/bills)', () => {
       expect(updated.body.taxWithholdings).toHaveLength(1);
     });
 
-    it('recusa alterar o valor de conta com retenções antigas', async () => {
+    it('recusa alterar o valor de boleto com retenções antigas', async () => {
       const legacy = await createLegacyBill(context.prisma, fixtures, {
         documentNumber: 'NF-ANTIGA',
         grossAmount: '1000.00',
@@ -280,11 +280,11 @@ describe('Contas a pagar (/bills)', () => {
         .expect(409);
 
       expect(response.body.message).toBe(
-        'Esta conta tem retenções do modelo anterior; o valor não pode ser alterado',
+        'Este boleto tem retenções do modelo anterior; o valor não pode ser alterado',
       );
     });
 
-    it('aceita reenviar o próprio líquido de conta antiga sem mexer no bruto', async () => {
+    it('aceita reenviar o próprio líquido de boleto antigo sem mexer no bruto', async () => {
       const legacy = await createLegacyBill(context.prisma, fixtures, {
         documentNumber: 'NF-ANTIGA',
         grossAmount: '1000.00',
@@ -302,7 +302,7 @@ describe('Contas a pagar (/bills)', () => {
   });
 
   describe('status calculado', () => {
-    it('marca como OVERDUE conta vencida e não paga', async () => {
+    it('marca como OVERDUE boleto vencido e não pago', async () => {
       const created = await server()
         .post('/bills')
         .send(
@@ -317,7 +317,7 @@ describe('Contas a pagar (/bills)', () => {
       expect(created.body.effectiveStatus).toBe('OVERDUE');
     });
 
-    it('mantém PENDING conta a vencer', async () => {
+    it('mantém PENDING boleto a vencer', async () => {
       const created = await server()
         .post('/bills')
         .send(
@@ -371,7 +371,7 @@ describe('Contas a pagar (/bills)', () => {
       expect(reverted.body.paymentDate).toBeNull();
     });
 
-    it('recusa pagar conta já paga', async () => {
+    it('recusa pagar boleto já pago', async () => {
       const created = await server().post('/bills').send(billPayload(fixtures));
       await server()
         .post(`/bills/${created.body.id}/payment`)
@@ -382,10 +382,10 @@ describe('Contas a pagar (/bills)', () => {
         .send({ paymentDate: '2026-07-09' })
         .expect(409);
 
-      expect(response.body.message).toBe('Esta conta já está paga');
+      expect(response.body.message).toBe('Este boleto já está pago');
     });
 
-    it('recusa estornar conta sem pagamento', async () => {
+    it('recusa estornar boleto sem pagamento', async () => {
       const created = await server().post('/bills').send(billPayload(fixtures));
 
       const response = await server()
@@ -393,11 +393,11 @@ describe('Contas a pagar (/bills)', () => {
         .expect(409);
 
       expect(response.body.message).toBe(
-        'Esta conta não possui pagamento registrado',
+        'Este boleto não possui pagamento registrado',
       );
     });
 
-    it('recusa editar conta já paga', async () => {
+    it('recusa editar boleto já pago', async () => {
       const created = await server().post('/bills').send(billPayload(fixtures));
       await server()
         .post(`/bills/${created.body.id}/payment`)
@@ -409,7 +409,7 @@ describe('Contas a pagar (/bills)', () => {
         .expect(409);
 
       expect(response.body.message).toBe(
-        'Não é possível editar uma conta já paga; estorne o pagamento antes',
+        'Não é possível editar um boleto já pago; estorne o pagamento antes',
       );
     });
   });
@@ -430,7 +430,7 @@ describe('Contas a pagar (/bills)', () => {
       expect(updated.body.taxWithholdings).toEqual([]);
     });
 
-    it('editar a descrição de um boleto do grupo mantém o rótulo no documento', async () => {
+    it('editar a descrição de um boleto da NF não muda o número da NF nem o rótulo', async () => {
       const created = await server()
         .post('/bills/installments')
         .send(installmentsPayload(fixtures))
@@ -442,13 +442,13 @@ describe('Contas a pagar (/bills)', () => {
         .expect(200);
 
       expect(updated.body.description).toBe('Cimento');
-      expect(updated.body.documentNumber).toBe('Cimento · B');
+      expect(updated.body.documentNumber).toBe('NF-100');
       expect(updated.body.installmentLabel).toBe('B');
     });
   });
 
   describe('remoção', () => {
-    it('remove conta antiga e suas retenções em cascata', async () => {
+    it('remove boleto antigo e suas retenções em cascata', async () => {
       const legacy = await createLegacyBill(context.prisma, fixtures, {
         documentNumber: 'NF-ANTIGA',
         grossAmount: '1000.00',
@@ -463,7 +463,7 @@ describe('Contas a pagar (/bills)', () => {
   });
 
   describe('parcelamento (/bills/installments)', () => {
-    it('cria todos os boletos no mesmo grupo, com rótulo e posição', async () => {
+    it('cria todos os boletos da NF no mesmo grupo, com rótulo e posição', async () => {
       const response = await server()
         .post('/bills/installments')
         .send(
@@ -491,7 +491,7 @@ describe('Contas a pagar (/bills)', () => {
       ).toBe(1);
       expect(first.installmentLabel).toBe('A');
       expect(first.digitableLine).toBe(BANK_SLIP_LINE);
-      expect(first.documentNumber).toBe('Compra parcelada · A');
+      expect(first.documentNumber).toBe('NF-100');
       expect(first.grossAmount).toBe('333.34');
       expect(first.netAmount).toBe('333.34');
       expect(third.dueDate).toContain('2026-09-10');
@@ -503,6 +503,46 @@ describe('Contas a pagar (/bills)', () => {
         totalAmount: '1000.00',
       });
       expect(await context.prisma.billGroup.count()).toBe(1);
+    });
+
+    it('sem valor total informado, a NF vale a soma dos boletos', async () => {
+      const response = await server()
+        .post('/bills/installments')
+        .send(
+          installmentsPayload(fixtures, {
+            totalAmount: undefined,
+            installments: [
+              { label: '1', dueDate: '2026-07-10', amount: '120.00' },
+              { label: '2', dueDate: '2026-08-10', amount: '80.55' },
+            ],
+          }),
+        )
+        .expect(201);
+
+      expect(response.body[0].group.totalAmount).toBe('200.55');
+    });
+
+    it('exige o número da NF e guarda o mesmo número em todos os boletos', async () => {
+      const missing = await server()
+        .post('/bills/installments')
+        .send(installmentsPayload(fixtures, { documentNumber: '  ' }))
+        .expect(400);
+      expect(missing.body.message).toContain('Número da NF é obrigatório');
+
+      await server()
+        .post('/bills')
+        .send(billPayload(fixtures, { documentNumber: undefined }))
+        .expect(400);
+
+      const created = await server()
+        .post('/bills/installments')
+        .send(installmentsPayload(fixtures, { documentNumber: ' NF-555 ' }))
+        .expect(201);
+      expect(
+        created.body.map(
+          (bill: { documentNumber: string }) => bill.documentNumber,
+        ),
+      ).toEqual(['NF-555', 'NF-555', 'NF-555']);
     });
 
     it('recusa soma dos boletos diferente do total', async () => {
@@ -520,23 +560,30 @@ describe('Contas a pagar (/bills)', () => {
         .expect(400);
 
       expect(response.body.message).toBe(
-        'A soma dos boletos (999.99) é diferente do valor total (1000.00)',
+        'A soma dos boletos (999.99) é diferente do valor total da NF (1000.00)',
       );
       expect(await context.prisma.bill.count()).toBe(0);
     });
 
-    it('recusa menos de 2 e mais de 60 boletos', async () => {
+    it('aceita NF com um boleto só e recusa nenhum ou mais de 60', async () => {
       const one = await server()
         .post('/bills/installments')
         .send(
           installmentsPayload(fixtures, {
             installments: [
-              { label: 'A', dueDate: '2026-07-10', amount: '1000.00' },
+              { label: '1', dueDate: '2026-07-10', amount: '1000.00' },
             ],
           }),
         )
+        .expect(201);
+      expect(one.body).toHaveLength(1);
+      expect(one.body[0].group).toMatchObject({ position: 1, billCount: 1 });
+
+      const none = await server()
+        .post('/bills/installments')
+        .send(installmentsPayload(fixtures, { installments: [] }))
         .expect(400);
-      expect(one.body.message).toContain('Informe ao menos 2 boletos');
+      expect(none.body.message).toContain('Informe ao menos 1 boleto');
 
       const many = Array.from({ length: 61 }, (_, index) => ({
         label: String(index + 1),
@@ -555,7 +602,7 @@ describe('Contas a pagar (/bills)', () => {
       expect(tooMany.body.message).toContain('Informe no máximo 60 boletos');
     });
 
-    it('recusa rótulos repetidos no grupo, sem diferenciar maiúsculas', async () => {
+    it('recusa rótulos repetidos na NF, sem diferenciar maiúsculas', async () => {
       const response = await server()
         .post('/bills/installments')
         .send(
@@ -569,9 +616,7 @@ describe('Contas a pagar (/bills)', () => {
         )
         .expect(400);
 
-      expect(response.body.message).toBe(
-        'Rótulo de boleto repetido no grupo: a',
-      );
+      expect(response.body.message).toBe('Rótulo de boleto repetido na NF: a');
     });
 
     it('recusa boleto com vencimento anterior à compra ou linha inválida', async () => {
@@ -587,7 +632,7 @@ describe('Contas a pagar (/bills)', () => {
         )
         .expect(400);
       expect(due.body.message).toBe(
-        'Boleto A: vencimento não pode ser anterior à data da compra',
+        'Boleto A: vencimento não pode ser anterior à emissão da NF',
       );
 
       const line = await server()
@@ -641,7 +686,7 @@ describe('Contas a pagar (/bills)', () => {
       expect(other.body.group.paidCount).toBe(1);
     });
 
-    it('exclui o grupo inteiro e recusa se houver boleto pago', async () => {
+    it('exclui a NF inteira e recusa se houver boleto pago', async () => {
       const created = await server()
         .post('/bills/installments')
         .send(installmentsPayload(fixtures))
@@ -655,7 +700,7 @@ describe('Contas a pagar (/bills)', () => {
         .delete(`/bills/installments/${groupId}`)
         .expect(409);
       expect(refused.body.message).toBe(
-        'Não é possível excluir o grupo: há boletos pagos. Estorne os pagamentos antes',
+        'Não é possível excluir a NF: há boletos pagos. Estorne os pagamentos antes',
       );
       expect(await context.prisma.bill.count()).toBe(3);
 
@@ -665,7 +710,7 @@ describe('Contas a pagar (/bills)', () => {
       expect(await context.prisma.billGroup.count()).toBe(0);
     });
 
-    it('retorna 404 para grupo inexistente', async () => {
+    it('retorna 404 para NF inexistente', async () => {
       await server().delete('/bills/installments/inexistente').expect(404);
     });
 
@@ -796,7 +841,7 @@ describe('Contas a pagar (/bills)', () => {
       expect(descriptions(payment.body)).toEqual(['JULHO']);
     });
 
-    it('dateBasis=due usa o vencimento da fatura para conta faturada', async () => {
+    it('dateBasis=due usa o vencimento da fatura para boleto faturado', async () => {
       const junho = await server()
         .get(`/bills?companyId=${fixtures.companyA}`)
         .expect(200);

@@ -16,6 +16,7 @@ import { formatDigitableLine } from '../../lib/digitable-line';
 import { sumMoney } from '../../lib/money';
 import type { Bill, BillGroupSummary } from '../../api/types';
 import { BillRowActions } from './BillRowActions';
+import { nfLabel } from './bill-form';
 import classes from './BillsTable.module.css';
 
 interface BillsTableProps {
@@ -35,7 +36,7 @@ function buildRows(bills: Bill[]): TableRow[] {
   const rows: TableRow[] = [];
   const groups = new Map<string, Bill[]>();
   for (const bill of bills) {
-    if (!bill.group) {
+    if (!bill.group || bill.group.billCount <= 1) {
       rows.push({ kind: 'bill', bill });
       continue;
     }
@@ -128,11 +129,15 @@ export function BillsTable({
         )}
       </td>
       <td>
-        <span className={classes.document}>{bill.description}</span>
-        {bill.invoice && (
-          <span className={classes.invoiceTag}>
-            Fatura {bill.invoice.number}
-          </span>
+        {child ? (
+          <span className={classes.secondary}>{bill.description}</span>
+        ) : (
+          <>
+            <span className={classes.document}>
+              {nfLabel(bill.documentNumber)}
+            </span>
+            <span className={classes.secondary}>{bill.description}</span>
+          </>
         )}
       </td>
       <td>{bill.category.name}</td>
@@ -181,10 +186,10 @@ export function BillsTable({
         <thead>
           <tr>
             <th>Fornecedor</th>
-            <th>Descrição</th>
+            <th>NF</th>
             <th>Categoria</th>
             <th>Obra</th>
-            <th>Compra</th>
+            <th>Emissão</th>
             <th>Vencimento</th>
             <th className={classes.numeric}>Valor</th>
             <th className={classes.center}>Linha</th>
@@ -232,10 +237,10 @@ export function BillsTable({
                   </td>
                   <td>
                     <span className={classes.document}>
-                      {first.description}
+                      {nfLabel(first.documentNumber)}
                     </span>
                     <span className={classes.secondary}>
-                      Parcelado em {group.billCount} boletos
+                      {first.description} · {group.billCount} boletos
                     </span>
                   </td>
                   <td>{first.category.name}</td>
@@ -278,7 +283,7 @@ export function BillsTable({
                           <ActionIcon
                             variant="subtle"
                             color="gray"
-                            aria-label="Ações do grupo"
+                            aria-label="Ações da NF"
                           >
                             <IconDotsVertical size={16} />
                           </ActionIcon>
@@ -289,7 +294,7 @@ export function BillsTable({
                             leftSection={<IconTrash size={15} />}
                             onClick={() => onDeleteGroup(group, members)}
                           >
-                            Excluir grupo
+                            Excluir NF
                           </Menu.Item>
                         </Menu.Dropdown>
                       </Menu>

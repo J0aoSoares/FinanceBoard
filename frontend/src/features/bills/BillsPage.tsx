@@ -14,7 +14,7 @@ import { BillsFilters } from './BillsFilters';
 import { BillsTable } from './BillsTable';
 import { BillFormModal } from './BillFormModal';
 import { PaymentModal } from './PaymentModal';
-import { billLabel } from './bill-form';
+import { billLabel, nfLabel } from './bill-form';
 import {
   useBills,
   useDeleteBill,
@@ -71,7 +71,8 @@ export function BillsPage() {
           O boleto <strong>{billLabel(bill)}</strong> será removido
           definitivamente.
           {bill.group &&
-            ` Ele faz parte de um grupo de ${bill.group.billCount} boletos; os demais continuam cadastrados.`}
+            bill.group.billCount > 1 &&
+            ` A NF tem ${bill.group.billCount} boletos; os demais continuam cadastrados.`}
         </Text>
       ),
       labels: { confirm: 'Excluir', cancel: 'Cancelar' },
@@ -81,17 +82,17 @@ export function BillsPage() {
 
   const confirmDeleteGroup = (group: BillGroupSummary, members: Bill[]) =>
     modals.openConfirmModal({
-      title: 'Excluir grupo de boletos',
+      title: 'Excluir NF',
       centered: true,
       children: (
         <Text size="sm">
-          Todos os <strong>{group.billCount} boletos</strong> de{' '}
-          <strong>{members[0].description}</strong> serão removidos
-          definitivamente, inclusive os que vencem em outros meses. Grupos com
-          boleto pago não podem ser excluídos.
+          Os <strong>{group.billCount} boletos</strong> da{' '}
+          <strong>{nfLabel(members[0].documentNumber)}</strong> serão removidos
+          definitivamente, inclusive os que vencem em outros meses. NF com
+          boleto pago não pode ser excluída.
         </Text>
       ),
-      labels: { confirm: 'Excluir grupo', cancel: 'Cancelar' },
+      labels: { confirm: 'Excluir NF', cancel: 'Cancelar' },
       confirmProps: { color: 'red' },
       onConfirm: () => deleteBillGroup.mutate(group.id),
     });
@@ -108,7 +109,7 @@ export function BillsPage() {
             leftSection={<IconPlus size={16} />}
             onClick={() => setFormState({ open: true, bill: null })}
           >
-            Novo boleto
+            Nova NF de boletos
           </Button>
         )}
       </Group>

@@ -57,7 +57,7 @@ export class CompanyService {
       }
       if (error.code === 'P2003') {
         return new ConflictException(
-          'Não é possível remover esta empresa: existem contas, faturas ou recebíveis vinculados a ela',
+          'Não é possível remover esta empresa: existem boletos ou contas a receber vinculados a ela',
         );
       }
       if (error.code === 'P2025') {

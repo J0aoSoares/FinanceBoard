@@ -475,7 +475,7 @@ export function ProjectResultsReportPage() {
             Receita pelas notas do período (
             {data.regime === 'cash' ? 'data de recebimento' : 'competência'}
             ); recebido pelo que entrou dentro do período; custo pelos boletos
-            lançados na obra. Contas antigas com retenções entram pelo valor
+            lançados na obra. Boletos antigos com retenções entram pelo valor
             bruto.
           </Text>
 

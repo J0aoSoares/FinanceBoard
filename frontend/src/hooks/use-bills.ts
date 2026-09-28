@@ -44,37 +44,37 @@ function useBillMutation<TVariables, TData>(
 export const useCreateBill = () =>
   useBillMutation(
     (input: CreateBillInput) => createBill(input),
-    'Conta cadastrada.',
-    'Não foi possível cadastrar a conta',
+    'Boleto cadastrado.',
+    'Não foi possível cadastrar o boleto',
   );
 
 export const useCreateInstallments = () =>
   useBillMutation(
     (input: CreateInstallmentsInput) => createInstallments(input),
-    'Boletos cadastrados.',
-    'Não foi possível cadastrar os boletos',
+    'NF e boletos cadastrados.',
+    'Não foi possível cadastrar a NF e os boletos',
   );
 
 export const useDeleteBillGroup = () =>
   useBillMutation(
     (groupId: string) => deleteBillGroup(groupId),
-    'Grupo de boletos removido.',
-    'Não foi possível remover o grupo de boletos',
+    'NF removida com todos os boletos.',
+    'Não foi possível remover a NF',
   );
 
 export const useUpdateBill = () =>
   useBillMutation(
     ({ id, input }: { id: string; input: UpdateBillInput }) =>
       updateBill(id, input),
-    'Conta atualizada.',
-    'Não foi possível atualizar a conta',
+    'Boleto atualizado.',
+    'Não foi possível atualizar o boleto',
   );
 
 export const useDeleteBill = () =>
   useBillMutation(
     (id: string) => deleteBill(id),
-    'Conta removida.',
-    'Não foi possível remover a conta',
+    'Boleto removido.',
+    'Não foi possível remover o boleto',
   );
 
 export const usePayBill = () =>

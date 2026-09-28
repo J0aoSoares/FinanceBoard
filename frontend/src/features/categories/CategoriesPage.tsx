@@ -30,7 +30,7 @@ export function CategoriesPage() {
       children: (
         <Text size="sm">
           A categoria <strong>{category.name}</strong> será removida. Se houver
-          contas classificadas nela, a API vai recusar a exclusão.
+          boletos classificados nela, a API vai recusar a exclusão.
         </Text>
       ),
       labels: { confirm: 'Excluir', cancel: 'Cancelar' },
@@ -46,8 +46,7 @@ export function CategoriesPage() {
     <Stack gap="lg" p="lg">
       <Group justify="space-between" align="flex-end">
         <Text size="sm" c="dimmed">
-          Categorias usadas para classificar as contas a pagar e o custo por
-          obra.
+          Categorias usadas para classificar os boletos e o custo das obras.
         </Text>
         {canWrite && (
           <Button

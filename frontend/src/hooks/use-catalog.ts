@@ -28,15 +28,13 @@ import type {
   CreateCompanyInput,
   CreateProjectInput,
   CreateSupplierInput,
-  Supplier,
   UpdateCategoryInput,
   UpdateCompanyInput,
   UpdateProjectInput,
   UpdateSupplierInput,
 } from '../api/types';
-import { ApiError } from '../lib/http';
-import { nameKey } from '../lib/name-key';
 import { notifyApiError, notifySuccess } from '../lib/notify';
+import { useCreateByName } from './use-create-by-name';
 
 const CATALOG_STALE_TIME = 5 * 60 * 1000;
 
@@ -145,51 +143,23 @@ export const useCreateSupplier = () =>
     'Não foi possível cadastrar o fornecedor',
   );
 
-export function useCreateSupplierByName() {
-  const queryClient = useQueryClient();
-
-  const findByName = async (name: string) => {
-    const suppliers = await queryClient.fetchQuery({
-      queryKey: ['suppliers'],
-      queryFn: () => listSuppliers(),
-      staleTime: 0,
-    });
-    return (
-      suppliers.find((supplier) => nameKey(supplier.name) === nameKey(name)) ??
-      null
-    );
-  };
-
-  return useMutation({
-    mutationFn: async (name: string) => {
-      try {
-        return { supplier: await createSupplier({ name }), created: true };
-      } catch (error) {
-        const existing =
-          error instanceof ApiError && error.status === 409
-            ? await findByName(name)
-            : null;
-        if (!existing) {
-          throw error;
-        }
-        return { supplier: existing, created: false };
-      }
-    },
-    onSuccess: ({ supplier, created }) => {
-      queryClient.setQueryData<Supplier[]>(['suppliers'], (current) =>
-        current && !current.some((item) => item.id === supplier.id)
-          ? [...current, supplier]
-          : current,
-      );
-      if (created) {
-        queryClient.invalidateQueries({ queryKey: ['suppliers'] });
-        notifySuccess('Fornecedor cadastrado.');
-      }
-    },
-    onError: (error) =>
-      notifyApiError(error, 'Não foi possível cadastrar o fornecedor'),
+export const useCreateSupplierByName = () =>
+  useCreateByName({
+    queryKey: 'suppliers',
+    list: () => listSuppliers(),
+    create: (name) => createSupplier({ name }),
+    successMessage: 'Fornecedor cadastrado.',
+    errorTitle: 'Não foi possível cadastrar o fornecedor',
   });
-}
+
+export const useCreateCategoryByName = () =>
+  useCreateByName({
+    queryKey: 'categories',
+    list: () => listCategories(),
+    create: (name) => createCategory({ name }),
+    successMessage: 'Categoria cadastrada.',
+    errorTitle: 'Não foi possível cadastrar a categoria',
+  });
 
 export const useUpdateSupplier = () =>
   useCatalogMutation(

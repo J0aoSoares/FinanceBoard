@@ -54,3 +54,13 @@
   border-radius: var(--fb-radius-sm);
   background-color: var(--mantine-color-red-light);
 }
+
+.remove {
+  width: 40px;
+}
+
+.generator {
+  padding: var(--fb-space-sm);
+  border: 1px dashed var(--fb-border-strong);
+  border-radius: var(--fb-radius-sm);
+}

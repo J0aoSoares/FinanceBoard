@@ -4,6 +4,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { Prisma } from '@prisma/client';
+import { nameKey } from '../common/name-key.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateCategoryDto } from './dto/create-category.dto';
 import { UpdateCategoryDto } from './dto/update-category.dto';
@@ -14,7 +15,9 @@ export class CategoryService {
 
   async create(dto: CreateCategoryDto) {
     try {
-      return await this.prisma.category.create({ data: dto });
+      return await this.prisma.category.create({
+        data: { ...dto, nameKey: nameKey(dto.name) },
+      });
     } catch (error) {
       throw this.translateWriteError(error);
     }
@@ -34,7 +37,11 @@ export class CategoryService {
 
   async update(id: string, dto: UpdateCategoryDto) {
     try {
-      return await this.prisma.category.update({ where: { id }, data: dto });
+      return await this.prisma.category.update({
+        where: { id },
+        data:
+          dto.name === undefined ? dto : { ...dto, nameKey: nameKey(dto.name) },
+      });
     } catch (error) {
       throw this.translateWriteError(error);
     }
@@ -55,7 +62,7 @@ export class CategoryService {
       }
       if (error.code === 'P2003') {
         return new ConflictException(
-          'Não é possível remover esta categoria: existem contas vinculadas a ela',
+          'Não é possível remover esta categoria: existem boletos vinculados a ela',
         );
       }
       if (error.code === 'P2025') {

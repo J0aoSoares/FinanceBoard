@@ -74,7 +74,7 @@ describe('Cadastros auxiliares', () => {
         .expect(400);
     });
 
-    it('recusa remover obra com contas vinculadas', async () => {
+    it('recusa remover obra com boletos vinculados', async () => {
       const fixtures = await createBaseFixtures(context.prisma);
       await server().post('/bills').send(billPayload(fixtures)).expect(201);
 
@@ -103,15 +103,52 @@ describe('Cadastros auxiliares', () => {
       );
     });
 
-    it('recusa nome vazio', async () => {
+    it('recusa nome que só difere por maiúsculas, acentos ou espaços', async () => {
+      const created = await server()
+        .post('/categories')
+        .send({ name: '  Combustível  ' })
+        .expect(201);
+      expect(created.body.name).toBe('Combustível');
+
+      for (const name of ['combustivel', 'COMBUSTÍVEL ', 'Combustivel']) {
+        const response = await server()
+          .post('/categories')
+          .send({ name })
+          .expect(409);
+        expect(response.body.message).toBe(
+          'Já existe uma categoria com esse nome',
+        );
+      }
+    });
+
+    it('recusa renomear para o nome de outra categoria', async () => {
+      await server().post('/categories').send({ name: 'Pneus' }).expect(201);
+      const other = await server()
+        .post('/categories')
+        .send({ name: 'Fretes' })
+        .expect(201);
+
+      await server()
+        .patch(`/categories/${other.body.id}`)
+        .send({ name: 'pneus' })
+        .expect(409);
+    });
+
+    it('recusa nome vazio ou só com espaços', async () => {
       await server().post('/categories').send({ name: '' }).expect(400);
+      await server().post('/categories').send({ name: '   ' }).expect(400);
     });
 
     it('recusa remover categoria em uso', async () => {
       const fixtures = await createBaseFixtures(context.prisma);
       await server().post('/bills').send(billPayload(fixtures)).expect(201);
 
-      await server().delete(`/categories/${fixtures.category}`).expect(409);
+      const response = await server()
+        .delete(`/categories/${fixtures.category}`)
+        .expect(409);
+      expect(response.body.message).toBe(
+        'Não é possível remover esta categoria: existem boletos vinculados a ela',
+      );
     });
   });
 
@@ -212,7 +249,7 @@ describe('Cadastros auxiliares', () => {
       expect(response.body.name).toBe('Oficina Pesada');
     });
 
-    it('recusa remover fornecedor com contas vinculadas', async () => {
+    it('recusa remover fornecedor com boletos vinculados', async () => {
       const fixtures = await createBaseFixtures(context.prisma);
       await server().post('/bills').send(billPayload(fixtures)).expect(201);
 

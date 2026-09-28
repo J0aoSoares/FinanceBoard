@@ -7,8 +7,6 @@ import { LoginPage } from './features/auth/LoginPage';
 import { BillsPage } from './features/bills/BillsPage';
 import { CategoriesPage } from './features/categories/CategoriesPage';
 import { CompaniesPage } from './features/companies/CompaniesPage';
-import { InvoiceDetailPage } from './features/invoices/InvoiceDetailPage';
-import { InvoicesPage } from './features/invoices/InvoicesPage';
 import { ProjectsPage } from './features/projects/ProjectsPage';
 import { ProjectDetailPage } from './features/projects/ProjectDetailPage';
 import { CashflowReportPage } from './features/reports/CashflowReportPage';
@@ -33,8 +31,6 @@ export function App() {
         <Route element={<AppLayout />}>
           <Route index element={<Navigate to="/bills" replace />} />
           <Route path="/bills" element={<BillsPage />} />
-          <Route path="/invoices" element={<InvoicesPage />} />
-          <Route path="/invoices/:id" element={<InvoiceDetailPage />} />
           <Route path="/receivables" element={<ReceivablesPage />} />
           <Route path="/reports" element={<ReportsLayout />}>
             <Route index element={<CashflowReportPage />} />

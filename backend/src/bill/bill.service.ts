@@ -50,7 +50,7 @@ type BillWithRelations = Prisma.BillGetPayload<{ include: typeof billInclude }>;
 type GroupMember = NonNullable<BillWithRelations['group']>['bills'][number];
 
 const LEGACY_AMOUNT_LOCKED =
-  'Esta conta tem retenções do modelo anterior; o valor não pode ser alterado';
+  'Este boleto tem retenções do modelo anterior; o valor não pode ser alterado';
 
 @Injectable()
 export class BillService {
@@ -67,7 +67,7 @@ export class BillService {
     try {
       const bill = await this.prisma.bill.create({
         data: {
-          documentNumber: this.documentNumberFor(dto.description),
+          documentNumber: dto.documentNumber,
           description: dto.description,
           digitableLine,
           grossAmount: amount,
@@ -89,10 +89,13 @@ export class BillService {
   }
 
   async createInstallments(dto: CreateInstallmentsDto) {
-    const total = this.toPositiveDecimal(
-      dto.totalAmount,
-      'Valor total deve ser maior que zero',
-    );
+    const total =
+      dto.totalAmount === undefined
+        ? null
+        : this.toPositiveDecimal(
+            dto.totalAmount,
+            'Valor total da NF deve ser maior que zero',
+          );
     this.assertUniqueLabels(dto.installments.map((item) => item.label));
 
     const installments = dto.installments.map((item) => {
@@ -103,7 +106,7 @@ export class BillService {
       );
       if (new Date(item.dueDate) < new Date(dto.issueDate)) {
         throw new BadRequestException(
-          `${prefix}vencimento não pode ser anterior à data da compra`,
+          `${prefix}vencimento não pode ser anterior à emissão da NF`,
         );
       }
       return {
@@ -117,9 +120,9 @@ export class BillService {
       (acc, item) => acc.plus(item.amount),
       new Prisma.Decimal(0),
     );
-    if (!sum.equals(total)) {
+    if (total && !sum.equals(total)) {
       throw new BadRequestException(
-        `A soma dos boletos (${sum.toFixed(2)}) é diferente do valor total (${total.toFixed(2)})`,
+        `A soma dos boletos (${sum.toFixed(2)}) é diferente do valor total da NF (${total.toFixed(2)})`,
       );
     }
 
@@ -128,7 +131,7 @@ export class BillService {
         const group = await tx.billGroup.create({ data: {} });
         await tx.bill.createMany({
           data: installments.map((item, index) => ({
-            documentNumber: this.documentNumberFor(dto.description, item.label),
+            documentNumber: dto.documentNumber,
             description: dto.description,
             digitableLine: item.digitableLine ?? null,
             installmentLabel: item.label,
@@ -233,7 +236,7 @@ export class BillService {
       include: billInclude,
     });
     if (!bill) {
-      throw new NotFoundException('Conta não encontrada');
+      throw new NotFoundException('Boleto não encontrado');
     }
     return this.toResponse(bill);
   }
@@ -244,11 +247,11 @@ export class BillService {
       include: { taxWithholdings: true },
     });
     if (!existing) {
-      throw new NotFoundException('Conta não encontrada');
+      throw new NotFoundException('Boleto não encontrado');
     }
     if (existing.status === PaymentStatus.PAID) {
       throw new ConflictException(
-        'Não é possível editar uma conta já paga; estorne o pagamento antes',
+        'Não é possível editar um boleto já pago; estorne o pagamento antes',
       );
     }
     if (
@@ -257,7 +260,7 @@ export class BillService {
       dto.companyId !== existing.companyId
     ) {
       throw new ConflictException(
-        'Não é possível trocar a empresa de uma conta vinculada a uma fatura; remova-a da fatura antes',
+        'Não é possível trocar a empresa de um boleto vinculado a uma fatura; remova-o da fatura antes',
       );
     }
 
@@ -288,9 +291,7 @@ export class BillService {
         data: {
           ...amountChanges,
           description: dto.description,
-          documentNumber: dto.description
-            ? this.documentNumberFor(dto.description, existing.installmentLabel)
-            : undefined,
+          documentNumber: dto.documentNumber,
           digitableLine: this.digitableLineValue(dto.digitableLine),
           issueDate: dto.issueDate ? new Date(dto.issueDate) : undefined,
           dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
@@ -310,15 +311,15 @@ export class BillService {
   async registerPayment(id: string, dto: PayBillDto) {
     const bill = await this.prisma.bill.findUnique({ where: { id } });
     if (!bill) {
-      throw new NotFoundException('Conta não encontrada');
+      throw new NotFoundException('Boleto não encontrado');
     }
     if (bill.invoiceId) {
       throw new ConflictException(
-        'Esta conta pertence a uma fatura; o pagamento deve ser registrado na fatura',
+        'Este boleto pertence a uma fatura; o pagamento deve ser registrado na fatura',
       );
     }
     if (bill.status === PaymentStatus.PAID) {
-      throw new ConflictException('Esta conta já está paga');
+      throw new ConflictException('Este boleto já está pago');
     }
 
     const updated = await this.prisma.bill.update({
@@ -335,10 +336,12 @@ export class BillService {
   async removePayment(id: string) {
     const bill = await this.prisma.bill.findUnique({ where: { id } });
     if (!bill) {
-      throw new NotFoundException('Conta não encontrada');
+      throw new NotFoundException('Boleto não encontrado');
     }
     if (bill.status !== PaymentStatus.PAID) {
-      throw new ConflictException('Esta conta não possui pagamento registrado');
+      throw new ConflictException(
+        'Este boleto não possui pagamento registrado',
+      );
     }
 
     const updated = await this.prisma.bill.update({
@@ -371,11 +374,11 @@ export class BillService {
       include: { bills: { include: { invoice: true } } },
     });
     if (!group) {
-      throw new NotFoundException('Grupo de boletos não encontrado');
+      throw new NotFoundException('NF não encontrada');
     }
     if (group.bills.some((bill) => this.isPaid(bill))) {
       throw new ConflictException(
-        'Não é possível excluir o grupo: há boletos pagos. Estorne os pagamentos antes',
+        'Não é possível excluir a NF: há boletos pagos. Estorne os pagamentos antes',
       );
     }
 
@@ -431,10 +434,6 @@ export class BillService {
     );
   }
 
-  private documentNumberFor(description: string, label?: string | null) {
-    return label ? `${description} · ${label}` : description;
-  }
-
   private digitableLineValue(value: string | null | undefined, prefix = '') {
     if (value === undefined) {
       return undefined;
@@ -455,7 +454,7 @@ export class BillService {
       const key = label.toLocaleUpperCase('pt-BR');
       if (seen.has(key)) {
         throw new BadRequestException(
-          `Rótulo de boleto repetido no grupo: ${label}`,
+          `Rótulo de boleto repetido na NF: ${label}`,
         );
       }
       seen.add(key);
@@ -473,7 +472,7 @@ export class BillService {
   private assertDateOrder(issueDate: string | Date, dueDate: string | Date) {
     if (new Date(dueDate) < new Date(issueDate)) {
       throw new BadRequestException(
-        'Data de vencimento não pode ser anterior à data da compra',
+        'Data de vencimento não pode ser anterior à emissão da NF',
       );
     }
   }
@@ -497,7 +496,7 @@ export class BillService {
         return new BadRequestException('Registro relacionado não existe');
       }
       if (error.code === 'P2025') {
-        return new NotFoundException('Conta não encontrada');
+        return new NotFoundException('Boleto não encontrado');
       }
     }
     return error;

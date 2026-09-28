@@ -31,7 +31,7 @@ export function SuppliersPage() {
       children: (
         <Text size="sm">
           O fornecedor <strong>{supplier.name}</strong> será removido. Se houver
-          contas ou faturas vinculadas, a API vai recusar a exclusão.
+          boletos vinculados, a API vai recusar a exclusão.
         </Text>
       ),
       labels: { confirm: 'Excluir', cancel: 'Cancelar' },
@@ -70,8 +70,7 @@ export function SuppliersPage() {
     <Stack gap="lg" p="lg">
       <Group justify="space-between" align="flex-end">
         <Text size="sm" c="dimmed">
-          Fornecedores usados nas contas a pagar e nas faturas. O documento é
-          opcional.
+          Fornecedores usados nos boletos. O documento é opcional.
         </Text>
         {canWrite && (
           <Button

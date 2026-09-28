@@ -37,14 +37,6 @@ export interface TaxWithholding {
   amount: Money;
 }
 
-export interface InvoiceSummary {
-  id: string;
-  number: string;
-  dueDate: string;
-  paymentDate: string | null;
-  status: PaymentStatus;
-}
-
 export interface BillGroupSummary {
   id: string;
   position: number;
@@ -73,18 +65,17 @@ export interface Bill {
   projectId: string | null;
   categoryId: string;
   supplierId: string;
-  invoiceId: string | null;
   company: Company;
   project: Project | null;
   category: Category;
   supplier: Supplier;
-  invoice: InvoiceSummary | null;
   taxWithholdings: TaxWithholding[];
   effectiveStatus: EffectiveStatus;
   effectiveDueDate: string;
 }
 
 export interface BillFieldsInput {
+  documentNumber: string;
   description: string;
   issueDate: string;
   companyId: string;
@@ -114,7 +105,7 @@ export interface InstallmentInput {
 }
 
 export interface CreateInstallmentsInput extends BillFieldsInput {
-  totalAmount: Money;
+  totalAmount?: Money;
   installments: InstallmentInput[];
 }
 
@@ -257,52 +248,6 @@ export interface ProjectBillingSummary {
   netInvoiced: Money;
   received: Money;
   outstanding: Money;
-}
-
-export type InvoiceBill = Omit<
-  Bill,
-  'company' | 'invoice' | 'effectiveStatus' | 'effectiveDueDate'
->;
-
-export interface Invoice {
-  id: string;
-  number: string;
-  companyId: string;
-  supplierId: string | null;
-  dueDate: string;
-  paymentDate: string | null;
-  status: PaymentStatus;
-  company: Company;
-  supplier: Supplier | null;
-  bills: InvoiceBill[];
-  effectiveStatus: EffectiveStatus;
-  billCount: number;
-  grossTotal: Money;
-  netTotal: Money;
-  withholdingTotal: Money;
-}
-
-export interface CreateInvoiceInput {
-  number: string;
-  companyId: string;
-  supplierId?: string | null;
-  dueDate: string;
-  billIds: string[];
-}
-
-export interface UpdateInvoiceInput {
-  number?: string;
-  supplierId?: string | null;
-  dueDate?: string;
-  billIds?: string[];
-}
-
-export interface InvoiceFilters {
-  companyId?: string;
-  supplierId?: string;
-  status?: EffectiveStatus;
-  month?: string;
-  regime?: Regime;
 }
 
 export interface ReportPeriodFilters {

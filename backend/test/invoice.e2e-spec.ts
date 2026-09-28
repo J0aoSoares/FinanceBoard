@@ -180,7 +180,7 @@ describe('Faturas (/invoices)', () => {
       .expect(409);
 
     expect(response.body.message).toBe(
-      'Esta conta pertence a uma fatura; o pagamento deve ser registrado na fatura',
+      'Este boleto pertence a uma fatura; o pagamento deve ser registrado na fatura',
     );
   });
 

@@ -115,7 +115,7 @@ export function legacyCsvRows(report: WithholdingReport): CsvCell[][] {
   const { bills, totals } = report.legacy;
   return [
     [
-      'Documento',
+      'NF',
       'Empresa',
       'CNPJ',
       'Fornecedor',
@@ -137,7 +137,7 @@ export function legacyCsvRows(report: WithholdingReport): CsvCell[][] {
       csvMoney(bill.netAmount),
     ]),
     [
-      `Total: ${totals.billCount} ${totals.billCount === 1 ? 'conta' : 'contas'} (modelo anterior)`,
+      `Total: ${totals.billCount} ${totals.billCount === 1 ? 'boleto' : 'boletos'} (modelo anterior)`,
       '',
       '',
       '',

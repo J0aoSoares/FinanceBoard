@@ -170,10 +170,10 @@ describe('CSV do relatório de retenções sofridas', () => {
     ]);
   });
 
-  it('exporta o histórico das contas a pagar separado', () => {
+  it('exporta o histórico dos boletos antigos separado', () => {
     const rows = legacyCsvRows(report);
     assert.equal(rows[1][0], 'NF-ANTIGA');
-    assert.equal(rows[2][0], 'Total: 1 conta (modelo anterior)');
+    assert.equal(rows[2][0], 'Total: 1 boleto (modelo anterior)');
     assert.equal(rows[2].length, rows[0].length);
   });
 });

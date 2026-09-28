@@ -1,18 +1,12 @@
 import { Tabs } from '@mantine/core';
-import {
-  IconChartBar,
-  IconCoins,
-  IconFileInvoice,
-  IconReceipt2,
-} from '@tabler/icons-react';
+import { IconChartBar, IconCoins, IconReceipt2 } from '@tabler/icons-react';
 import { useEffect, useRef } from 'react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
 import { useGlobalFilters } from '../../hooks/use-global-filters';
 import classes from './ContentTabs.module.css';
 
 const tabs = [
-  { value: '/bills', label: 'Contas a pagar', icon: IconReceipt2 },
-  { value: '/invoices', label: 'Faturas', icon: IconFileInvoice },
+  { value: '/bills', label: 'Boletos', icon: IconReceipt2 },
   { value: '/receivables', label: 'Notas de serviço', icon: IconCoins },
   { value: '/reports', label: 'Relatórios', icon: IconChartBar },
 ];

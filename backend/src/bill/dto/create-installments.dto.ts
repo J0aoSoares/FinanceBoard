@@ -13,7 +13,7 @@ import {
 } from 'class-validator';
 import { BillFieldsDto, MONEY_PATTERN, trimmed } from './create-bill.dto';
 
-export const MIN_INSTALLMENTS = 2;
+export const MIN_INSTALLMENTS = 1;
 export const MAX_INSTALLMENTS = 60;
 
 export class InstallmentDto {
@@ -41,15 +41,16 @@ export class InstallmentDto {
 }
 
 export class CreateInstallmentsDto extends BillFieldsDto {
+  @IsOptional()
   @Matches(MONEY_PATTERN, {
     message:
       'Valor total deve ser um número decimal com até 2 casas, ex: "1000.00"',
   })
-  totalAmount!: string;
+  totalAmount?: string;
 
   @IsArray({ message: 'Boletos devem ser uma lista' })
   @ArrayMinSize(MIN_INSTALLMENTS, {
-    message: `Informe ao menos ${MIN_INSTALLMENTS} boletos`,
+    message: `Informe ao menos ${MIN_INSTALLMENTS} boleto`,
   })
   @ArrayMaxSize(MAX_INSTALLMENTS, {
     message: `Informe no máximo ${MAX_INSTALLMENTS} boletos`,

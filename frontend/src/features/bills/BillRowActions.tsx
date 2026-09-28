@@ -23,17 +23,12 @@ export function BillRowActions({
   onEdit,
   onDelete,
 }: BillRowActionsProps) {
-  const invoiced = bill.invoice !== null;
   const paid = bill.effectiveStatus === 'PAID';
-
-  const payLabel = invoiced
-    ? 'Conta faturada: o pagamento é registrado na fatura'
-    : 'Registrar pagamento';
 
   return (
     <Menu position="bottom-end" withinPortal shadow="md">
       <Menu.Target>
-        <ActionIcon variant="subtle" color="gray" aria-label="Ações da conta">
+        <ActionIcon variant="subtle" color="gray" aria-label="Ações do boleto">
           <IconDotsVertical size={16} />
         </ActionIcon>
       </Menu.Target>
@@ -42,29 +37,20 @@ export function BillRowActions({
         {paid ? (
           <Menu.Item
             leftSection={<IconArrowBackUp size={15} />}
-            disabled={invoiced}
             onClick={onReverse}
           >
             Estornar pagamento
           </Menu.Item>
         ) : (
-          <Tooltip label={payLabel} disabled={!invoiced} withArrow>
-            <div>
-              <Menu.Item
-                leftSection={<IconCash size={15} />}
-                disabled={invoiced}
-                onClick={onPay}
-              >
-                Registrar pagamento
-              </Menu.Item>
-            </div>
-          </Tooltip>
+          <Menu.Item leftSection={<IconCash size={15} />} onClick={onPay}>
+            Registrar pagamento
+          </Menu.Item>
         )}
 
         <Menu.Divider />
 
         <Tooltip
-          label="Conta paga não pode ser editada; estorne antes"
+          label="Boleto pago não pode ser editado; estorne antes"
           disabled={!paid}
           withArrow
         >

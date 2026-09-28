@@ -294,8 +294,8 @@ function LegacyBlock({
           }
           onClick={() => setExpanded((previous) => !previous)}
         >
-          Histórico: retenções lançadas em contas a pagar (modelo anterior) ·{' '}
-          {totals.billCount} {totals.billCount === 1 ? 'conta' : 'contas'}
+          Histórico: retenções lançadas em boletos (modelo anterior) ·{' '}
+          {totals.billCount} {totals.billCount === 1 ? 'boleto' : 'boletos'}
         </Button>
         {expanded && (
           <Button
@@ -320,7 +320,7 @@ function LegacyBlock({
             <table className={`${tableClasses.table} ${classes.dense}`}>
               <thead>
                 <tr>
-                  <th>Documento</th>
+                  <th>NF</th>
                   <th>Empresa</th>
                   <th>Fornecedor</th>
                   <th>Referência</th>

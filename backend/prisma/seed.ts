@@ -65,6 +65,7 @@ async function seedAdminUser() {
 }
 
 type SeedBill = {
+  documentNumber: string;
   description: string;
   amount: string;
   issueDate: string;
@@ -180,9 +181,9 @@ async function main() {
   const categories = new Map<string, string>();
   for (const name of CATEGORIES) {
     const category = await prisma.category.upsert({
-      where: { name },
+      where: { nameKey: nameKey(name) },
       update: {},
-      create: { name },
+      create: { name, nameKey: nameKey(name) },
     });
     categories.set(name, category.id);
   }
@@ -218,6 +219,7 @@ async function main() {
 
   const paidBills: SeedBill[] = [
     {
+      documentNumber: 'NF-1040',
       description: 'Diesel S10 - frota Vale Verde',
       amount: '8450.00',
       issueDate: '2026-05-08',
@@ -229,6 +231,7 @@ async function main() {
       supplierId: supplier('Posto Rodoviário Central'),
     },
     {
+      documentNumber: 'NF-1041',
       description: 'Revisão de motoniveladora',
       amount: '10680.00',
       issueDate: '2026-05-20',
@@ -240,6 +243,7 @@ async function main() {
       supplierId: supplier('Oficina Mecânica Pesada'),
     },
     {
+      documentNumber: 'NF-1042',
       description: 'Frete de brita - junho',
       amount: '6300.00',
       issueDate: '2026-06-03',
@@ -251,6 +255,7 @@ async function main() {
       supplierId: supplier('Transportadora Parceira'),
     },
     {
+      documentNumber: 'NF-1043',
       description: 'Honorários contábeis - junho',
       amount: '4074.00',
       issueDate: '2026-06-25',
@@ -265,6 +270,7 @@ async function main() {
 
   const overdueBills: SeedBill[] = [
     {
+      documentNumber: 'NF-1044',
       description: 'Filtros e óleo hidráulico',
       amount: '3750.00',
       issueDate: '2026-06-15',
@@ -275,6 +281,7 @@ async function main() {
       supplierId: supplier('Auto Peças Diesel'),
     },
     {
+      documentNumber: 'NF-1045',
       description: 'Pneus para caminhões basculantes',
       amount: '9800.00',
       issueDate: '2026-07-02',
@@ -289,6 +296,7 @@ async function main() {
 
   const pendingBills: SeedBill[] = [
     {
+      documentNumber: 'NF-1046',
       description: 'Locação de escavadeira - agosto',
       amount: '15400.00',
       issueDate: '2026-07-18',
@@ -300,6 +308,7 @@ async function main() {
       supplierId: supplier('Locadora de Máquinas Sul'),
     },
     {
+      documentNumber: 'NF-1047',
       description: 'Diesel S10 - frota Vale Verde',
       amount: '5600.00',
       issueDate: '2026-07-28',
@@ -311,6 +320,7 @@ async function main() {
       supplierId: supplier('Posto Rodoviário Central'),
     },
     {
+      documentNumber: 'NF-1048',
       description: 'Manutenção de caminhões - agosto',
       amount: '6552.00',
       issueDate: '2026-08-01',
@@ -321,6 +331,7 @@ async function main() {
       supplierId: supplier('Oficina Mecânica Pesada'),
     },
     {
+      documentNumber: 'NF-1049',
       description: 'Seguro da frota - setembro',
       amount: '2900.00',
       issueDate: '2026-08-03',
@@ -333,8 +344,9 @@ async function main() {
     },
   ];
 
-  const invoicedBills: SeedBill[] = [
+  const rentalBills: SeedBill[] = [
     {
+      documentNumber: 'NF-1050',
       description: 'Locação de rolo compactador - junho',
       amount: '4800.00',
       issueDate: '2026-06-10',
@@ -345,6 +357,7 @@ async function main() {
       supplierId: supplier('Locadora de Máquinas Sul'),
     },
     {
+      documentNumber: 'NF-1051',
       description: 'Locação de rolo compactador - julho',
       amount: '5200.00',
       issueDate: '2026-07-12',
@@ -355,6 +368,7 @@ async function main() {
       supplierId: supplier('Locadora de Máquinas Sul'),
     },
     {
+      documentNumber: 'NF-1052',
       description: 'Locação de rolo compactador - agosto',
       amount: '3100.00',
       issueDate: '2026-08-02',
@@ -366,13 +380,12 @@ async function main() {
     },
   ];
 
-  async function createBill(data: SeedBill, invoiceId?: string) {
+  async function createBill(data: SeedBill) {
     const { amount, paymentDate, digitableLine, ...rest } = data;
 
     return prisma.bill.create({
       data: {
         ...rest,
-        documentNumber: rest.description,
         grossAmount: amount,
         netAmount: amount,
         digitableLine: digitableLine ?? null,
@@ -381,25 +394,17 @@ async function main() {
         paymentDate: paymentDate ? new Date(paymentDate) : null,
         status: paymentDate ? PaymentStatus.PAID : PaymentStatus.PENDING,
         hasTaxWithholding: false,
-        invoiceId: invoiceId ?? null,
       },
     });
   }
 
-  for (const bill of [...paidBills, ...overdueBills, ...pendingBills]) {
+  for (const bill of [
+    ...paidBills,
+    ...overdueBills,
+    ...pendingBills,
+    ...rentalBills,
+  ]) {
     await createBill(bill);
-  }
-
-  const invoice = await prisma.invoice.create({
-    data: {
-      number: 'FAT-2026-08',
-      companyId: terraplenagem.id,
-      supplierId: supplier('Locadora de Máquinas Sul'),
-      dueDate: new Date('2026-09-15'),
-    },
-  });
-  for (const bill of invoicedBills) {
-    await createBill(bill, invoice.id);
   }
 
   const installmentLines = [
@@ -424,7 +429,7 @@ async function main() {
     const paid = index < 4;
     await prisma.bill.create({
       data: {
-        documentNumber: `${installmentDescription} · ${label}`,
+        documentNumber: 'NF-7788',
         description: installmentDescription,
         digitableLine,
         installmentLabel: label,
@@ -550,7 +555,6 @@ async function main() {
     fornecedores: await prisma.supplier.count(),
     boletos: await prisma.bill.count(),
     parcelamentos: await prisma.billGroup.count(),
-    faturas: await prisma.invoice.count(),
     notasDeServiço: await prisma.receivable.count(),
     retençõesSofridas: await prisma.receivableWithholding.count(),
   };

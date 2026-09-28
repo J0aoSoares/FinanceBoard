@@ -133,7 +133,7 @@ describe('Empresas (/companies)', () => {
     await server().get(`/companies/${created.body.id}`).expect(404);
   });
 
-  it('recusa remover empresa com contas vinculadas', async () => {
+  it('recusa remover empresa com boletos vinculados', async () => {
     const fixtures = await createBaseFixtures(context.prisma);
     await server().post('/bills').send(billPayload(fixtures)).expect(201);
 
@@ -142,7 +142,7 @@ describe('Empresas (/companies)', () => {
       .expect(409);
 
     expect(response.body.message).toBe(
-      'Não é possível remover esta empresa: existem contas, faturas ou recebíveis vinculados a ela',
+      'Não é possível remover esta empresa: existem boletos ou contas a receber vinculados a ela',
     );
   });
 });

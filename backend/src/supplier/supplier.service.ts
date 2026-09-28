@@ -62,7 +62,7 @@ export class SupplierService {
       }
       if (error.code === 'P2003') {
         return new ConflictException(
-          'Não é possível remover este fornecedor: existem contas ou faturas vinculadas a ele',
+          'Não é possível remover este fornecedor: existem boletos vinculados a ele',
         );
       }
       if (error.code === 'P2025') {

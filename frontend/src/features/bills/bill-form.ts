@@ -1,20 +1,20 @@
 import type {
   Bill,
-  CreateBillInput,
   CreateInstallmentsInput,
   UpdateBillInput,
 } from '../../api/types';
-import { apiDate, monthlyDueDates } from '../../lib/date';
+import { addMonthsClamped, apiDate, monthlyDueDates } from '../../lib/date.ts';
 import {
   digitableLineError,
   formatDigitableLine,
   normalizeDigitableLine,
-} from '../../lib/digitable-line';
+} from '../../lib/digitable-line.ts';
 import {
+  alphaLabel,
   duplicatedLabels,
   installmentLabels,
   type LabelPattern,
-} from '../../lib/installment-labels';
+} from '../../lib/installment-labels.ts';
 import {
   compareMoney,
   formatCurrency,
@@ -23,9 +23,8 @@ import {
   subtractMoney,
   sumMoney,
   type Money,
-} from '../../lib/money';
+} from '../../lib/money.ts';
 
-export const MIN_INSTALLMENTS = 2;
 export const MAX_INSTALLMENTS = 60;
 
 export interface InstallmentRow {
@@ -35,105 +34,137 @@ export interface InstallmentRow {
   digitableLine: string;
 }
 
-export interface InstallmentSettings {
+export interface GeneratorSettings {
   count: number;
-  labelPattern: LabelPattern;
   firstDueDate: string | null;
   intervalMonths: number;
 }
 
 export interface BillFormValues {
   supplierId: string | null;
+  documentNumber: string;
   description: string;
   categoryId: string | null;
   projectId: string | null;
   companyId: string | null;
   issueDate: string | null;
-  amount: Money;
-  dueDate: string | null;
-  digitableLine: string;
-  split: boolean;
-  settings: InstallmentSettings;
+  totalAmount: Money;
+  labelPattern: LabelPattern;
   installments: InstallmentRow[];
+  generator: GeneratorSettings;
 }
+
+const emptyRow = (label: string): InstallmentRow => ({
+  label,
+  dueDate: null,
+  amount: '',
+  digitableLine: '',
+});
 
 export const emptyBillForm = (companyId?: string): BillFormValues => ({
   supplierId: null,
+  documentNumber: '',
   description: '',
   categoryId: null,
   projectId: null,
   companyId: companyId ?? null,
   issueDate: null,
-  amount: '',
-  dueDate: null,
-  digitableLine: '',
-  split: false,
-  settings: {
-    count: 2,
-    labelPattern: 'numeric',
-    firstDueDate: null,
-    intervalMonths: 1,
-  },
-  installments: [],
+  totalAmount: '',
+  labelPattern: 'numeric',
+  installments: [emptyRow('1')],
+  generator: { count: 2, firstDueDate: null, intervalMonths: 1 },
 });
 
 export const billToFormValues = (bill: Bill): BillFormValues => ({
   ...emptyBillForm(bill.companyId),
   supplierId: bill.supplierId,
+  documentNumber: bill.documentNumber,
   description: bill.description,
   categoryId: bill.categoryId,
   projectId: bill.projectId,
   issueDate: apiDate(bill.issueDate),
-  amount: bill.netAmount,
-  dueDate: apiDate(bill.dueDate),
-  digitableLine: bill.digitableLine
-    ? formatDigitableLine(bill.digitableLine)
-    : '',
+  labelPattern: 'manual',
+  installments: [
+    {
+      label: bill.installmentLabel ?? '',
+      dueDate: apiDate(bill.dueDate),
+      amount: bill.netAmount,
+      digitableLine: bill.digitableLine
+        ? formatDigitableLine(bill.digitableLine)
+        : '',
+    },
+  ],
 });
 
+export const nfLabel = (documentNumber: string) =>
+  /^nf/i.test(documentNumber.trim()) ? documentNumber : `NF ${documentNumber}`;
+
 export const billLabel = (bill: Bill) =>
-  bill.installmentLabel
-    ? `${bill.description} · boleto ${bill.installmentLabel}`
-    : bill.description;
+  bill.installmentLabel && (bill.group?.billCount ?? 1) > 1
+    ? `${nfLabel(bill.documentNumber)} · boleto ${bill.installmentLabel}`
+    : nfLabel(bill.documentNumber);
 
 export const hasLegacyWithholdings = (bill: Bill | null) =>
   bill !== null && bill.taxWithholdings.length > 0;
 
-const isValidCount = (count: number) =>
-  Number.isInteger(count) &&
-  count >= MIN_INSTALLMENTS &&
-  count <= MAX_INSTALLMENTS;
+const hasTotal = (values: Pick<BillFormValues, 'totalAmount'>) =>
+  values.totalAmount.trim() !== '';
 
-export function buildInstallmentRows(
-  settings: InstallmentSettings,
-  total: Money,
+export function generateRows(
+  values: Pick<BillFormValues, 'generator' | 'labelPattern' | 'totalAmount'>,
   previous: InstallmentRow[],
 ): InstallmentRow[] {
-  if (!isValidCount(settings.count)) {
-    return previous;
-  }
+  const { count, firstDueDate, intervalMonths } = values.generator;
   const labels = installmentLabels(
-    settings.labelPattern,
-    settings.count,
+    values.labelPattern,
+    count,
     previous.map((row) => row.label),
   );
-  const dueDates = settings.firstDueDate
-    ? monthlyDueDates(
-        settings.firstDueDate,
-        settings.count,
-        Math.max(1, settings.intervalMonths),
-      )
+  const dueDates = firstDueDate
+    ? monthlyDueDates(firstDueDate, count, Math.max(1, intervalMonths))
     : [];
-  const amounts = isCanonicalMoney(total)
-    ? splitMoney(total, settings.count)
-    : [];
+  const amounts =
+    hasTotal(values) && isCanonicalMoney(values.totalAmount)
+      ? splitMoney(values.totalAmount, count)
+      : [];
 
   return labels.map((label, index) => ({
     label,
     dueDate: dueDates[index] ?? previous[index]?.dueDate ?? null,
-    amount: amounts[index] ?? '',
+    amount: amounts[index] ?? previous[index]?.amount ?? '',
     digitableLine: previous[index]?.digitableLine ?? '',
   }));
+}
+
+export function nextRow(
+  values: Pick<BillFormValues, 'installments' | 'labelPattern' | 'generator'>,
+): InstallmentRow {
+  const rows = values.installments;
+  const label =
+    values.labelPattern === 'numeric'
+      ? String(rows.length + 1)
+      : values.labelPattern === 'alpha'
+        ? alphaLabel(rows.length)
+        : '';
+  const lastDue = rows.at(-1)?.dueDate ?? null;
+  return {
+    ...emptyRow(label),
+    dueDate: lastDue
+      ? addMonthsClamped(lastDue, Math.max(1, values.generator.intervalMonths))
+      : null,
+  };
+}
+
+export function relabelRows(
+  rows: InstallmentRow[],
+  pattern: LabelPattern,
+): InstallmentRow[] {
+  const labels = installmentLabels(
+    pattern,
+    rows.length,
+    rows.map((row) => row.label),
+  );
+  return rows.map((row, index) => ({ ...row, label: labels[index] }));
 }
 
 export function redistributeAmounts(
@@ -149,72 +180,56 @@ export function redistributeAmounts(
 
 export function installmentsSum(rows: InstallmentRow[]): Money | null {
   const amounts = rows.map((row) => row.amount);
-  return amounts.every(isCanonicalMoney) ? sumMoney(amounts) : null;
+  return amounts.length > 0 && amounts.every(isCanonicalMoney)
+    ? sumMoney(amounts)
+    : null;
 }
 
-export function installmentsDifference(values: BillFormValues): Money | null {
+export function totalDifference(
+  values: Pick<BillFormValues, 'installments' | 'totalAmount'>,
+): Money | null {
   const sum = installmentsSum(values.installments);
-  if (sum === null || !isCanonicalMoney(values.amount)) {
+  if (
+    sum === null ||
+    !hasTotal(values) ||
+    !isCanonicalMoney(values.totalAmount)
+  ) {
     return null;
   }
-  return subtractMoney(values.amount, sum);
+  return subtractMoney(values.totalAmount, sum);
 }
 
 const positiveAmount = (value: string) => {
   if (!isCanonicalMoney(value)) {
     return 'Informe um valor válido';
   }
-  if (compareMoney(value, '0.00') <= 0) {
-    return 'O valor deve ser maior que zero';
-  }
-  return null;
+  return compareMoney(value, '0.00') <= 0
+    ? 'O valor deve ser maior que zero'
+    : null;
 };
 
-const digitableLine = (value: string) =>
-  value.trim() === '' ? null : digitableLineError(value);
-
-const notBeforeIssue = (value: string | null, values: BillFormValues) =>
-  value && values.issueDate && value < values.issueDate
-    ? 'Vencimento não pode ser anterior à data da compra'
-    : null;
+const required = (message: string) => (value: string | null) =>
+  value && value.trim() !== '' ? null : message;
 
 export const billFormValidation = {
-  supplierId: (value: string | null) =>
-    value ? null : 'Fornecedor é obrigatório',
-  description: (value: string) =>
-    value.trim() === '' ? 'Descrição é obrigatória' : null,
-  categoryId: (value: string | null) =>
-    value ? null : 'Categoria é obrigatória',
-  companyId: (value: string | null) => (value ? null : 'Empresa é obrigatória'),
-  issueDate: (value: string | null) =>
-    value ? null : 'Data da compra é obrigatória',
-  amount: (value: string, values: BillFormValues) => {
+  supplierId: required('Fornecedor é obrigatório'),
+  documentNumber: required('Número da NF é obrigatório'),
+  description: required('Descrição é obrigatória'),
+  categoryId: required('Categoria é obrigatória'),
+  companyId: required('Empresa é obrigatória'),
+  issueDate: required('Data de emissão da NF é obrigatória'),
+  totalAmount: (value: string, values: BillFormValues) => {
+    if (value.trim() === '') {
+      return null;
+    }
     const invalid = positiveAmount(value);
-    if (invalid || !values.split) {
+    if (invalid) {
       return invalid;
     }
-    const difference = installmentsDifference(values);
+    const difference = totalDifference(values);
     return difference !== null && compareMoney(difference, '0.00') !== 0
       ? `A soma dos boletos difere do valor total em ${formatCurrency(difference.replace('-', ''))}`
       : null;
-  },
-  dueDate: (value: string | null, values: BillFormValues) => {
-    if (values.split) {
-      return null;
-    }
-    return value
-      ? notBeforeIssue(value, values)
-      : 'Data de vencimento é obrigatória';
-  },
-  digitableLine: (value: string, values: BillFormValues) =>
-    values.split ? null : digitableLine(value),
-  settings: {
-    count: (value: number, values: BillFormValues) =>
-      !values.split || isValidCount(value)
-        ? null
-        : `Informe de ${MIN_INSTALLMENTS} a ${MAX_INSTALLMENTS} boletos`,
-    firstDueDate: (value: string | null, values: BillFormValues) =>
-      !values.split || value ? null : 'Primeiro vencimento é obrigatório',
   },
   installments: {
     label: (value: string, values: BillFormValues) => {
@@ -227,10 +242,17 @@ export const billFormValidation = {
         ? 'Rótulo repetido'
         : null;
     },
-    dueDate: (value: string | null, values: BillFormValues) =>
-      value ? notBeforeIssue(value, values) : 'Vencimento obrigatório',
+    dueDate: (value: string | null, values: BillFormValues) => {
+      if (!value) {
+        return 'Vencimento obrigatório';
+      }
+      return values.issueDate && value < values.issueDate
+        ? 'Vencimento anterior à emissão da NF'
+        : null;
+    },
     amount: positiveAmount,
-    digitableLine,
+    digitableLine: (value: string) =>
+      value.trim() === '' ? null : digitableLineError(value),
   },
 };
 
@@ -239,6 +261,7 @@ const optionalDigitableLine = (value: string) =>
 
 function buildFields(values: BillFormValues) {
   const fields = {
+    documentNumber: values.documentNumber.trim(),
     description: values.description.trim(),
     issueDate: values.issueDate!,
     companyId: values.companyId!,
@@ -248,32 +271,11 @@ function buildFields(values: BillFormValues) {
   return values.projectId ? { ...fields, projectId: values.projectId } : fields;
 }
 
-export function buildCreatePayload(values: BillFormValues): CreateBillInput {
-  const payload: CreateBillInput = {
-    ...buildFields(values),
-    amount: values.amount,
-    dueDate: values.dueDate!,
-  };
-  const line = optionalDigitableLine(values.digitableLine);
-  return line ? { ...payload, digitableLine: line } : payload;
-}
-
-export function buildUpdatePayload(values: BillFormValues): UpdateBillInput {
-  return {
-    ...buildFields(values),
-    amount: values.amount,
-    dueDate: values.dueDate!,
-    projectId: values.projectId,
-    digitableLine: optionalDigitableLine(values.digitableLine) ?? null,
-  };
-}
-
 export function buildInstallmentsPayload(
   values: BillFormValues,
 ): CreateInstallmentsInput {
-  return {
+  const payload: CreateInstallmentsInput = {
     ...buildFields(values),
-    totalAmount: values.amount,
     installments: values.installments.map((row) => {
       const installment = {
         label: row.label.trim(),
@@ -283,5 +285,19 @@ export function buildInstallmentsPayload(
       const line = optionalDigitableLine(row.digitableLine);
       return line ? { ...installment, digitableLine: line } : installment;
     }),
+  };
+  return hasTotal(values)
+    ? { ...payload, totalAmount: values.totalAmount }
+    : payload;
+}
+
+export function buildUpdatePayload(values: BillFormValues): UpdateBillInput {
+  const [row] = values.installments;
+  return {
+    ...buildFields(values),
+    projectId: values.projectId,
+    amount: row.amount,
+    dueDate: row.dueDate!,
+    digitableLine: optionalDigitableLine(row.digitableLine) ?? null,
   };
 }

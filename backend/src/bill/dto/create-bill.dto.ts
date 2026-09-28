@@ -14,13 +14,18 @@ export const MONEY_PATTERN = /^\d+(\.\d{1,2})?$/;
 
 export class BillFieldsDto {
   @Transform(trimmed)
+  @IsString({ message: 'Número da NF deve ser um texto' })
+  @IsNotEmpty({ message: 'Número da NF é obrigatório' })
+  documentNumber!: string;
+
+  @Transform(trimmed)
   @IsString({ message: 'Descrição deve ser um texto' })
   @IsNotEmpty({ message: 'Descrição é obrigatória' })
   description!: string;
 
   @IsDateString(
     {},
-    { message: 'Data da compra deve estar no formato aaaa-mm-dd' },
+    { message: 'Data de emissão da NF deve estar no formato aaaa-mm-dd' },
   )
   issueDate!: string;
 

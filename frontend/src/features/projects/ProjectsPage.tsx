@@ -95,7 +95,7 @@ export function ProjectsPage() {
     <Stack gap="lg" p="lg">
       <Group justify="space-between" align="flex-end">
         <Text size="sm" c="dimmed">
-          Obras usadas para ratear custos e receitas. Contas sem obra contam
+          Obras usadas para ratear custos e receitas. Boletos sem obra contam
           como despesa administrativa.
         </Text>
         {canWrite && (

@@ -28,10 +28,13 @@ export async function createBaseFixtures(
     data: { name: 'Obra Beta', clientName: 'Cliente Beta' },
   });
   const category = await prisma.category.create({
-    data: { name: 'Combustível' },
+    data: { name: 'Combustível', nameKey: nameKey('Combustível') },
   });
   const categoryAlt = await prisma.category.create({
-    data: { name: 'Locação de Equipamentos' },
+    data: {
+      name: 'Locação de Equipamentos',
+      nameKey: nameKey('Locação de Equipamentos'),
+    },
   });
   const supplier = await prisma.supplier.create({
     data: {
@@ -64,6 +67,7 @@ export function billPayload(
   overrides: Record<string, unknown> = {},
 ) {
   return {
+    documentNumber: 'NF-001',
     description: 'Boleto 001',
     amount: '1000.00',
     issueDate: '2026-06-10',
@@ -81,6 +85,7 @@ export function installmentsPayload(
   overrides: Record<string, unknown> = {},
 ) {
   return {
+    documentNumber: 'NF-100',
     description: 'Compra parcelada',
     totalAmount: '1000.00',
     issueDate: '2026-06-10',
