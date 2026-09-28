@@ -118,14 +118,81 @@ describe('Relatórios (/reports)', () => {
       .post(`/receivables/${recebivel.body.id}/receipt`)
       .send({ receiptDate: '2026-07-15' })
       .expect(200);
+
+    const createNote = async (
+      overrides: Record<string, unknown>,
+      receiptDate?: string,
+    ) => {
+      const note = await server()
+        .post('/receivables')
+        .send(receivablePayload(fixtures, overrides))
+        .expect(201);
+      if (receiptDate) {
+        await server()
+          .post(`/receivables/${note.body.id}/receipt`)
+          .send({ receiptDate })
+          .expect(200);
+      }
+    };
+
+    await createNote(
+      {
+        number: 'NFS-002',
+        grossAmount: '10000.00',
+        withholdings: [
+          { type: 'INSS', amount: '1100.00' },
+          { type: 'ISS', amount: '500.00' },
+        ],
+        competence: '2026-07',
+        issueDate: '2026-07-05',
+        dueDate: '2026-08-05',
+        projectId: fixtures.projectB,
+      },
+      '2026-08-10',
+    );
+    await createNote({
+      number: 'NFS-101',
+      grossAmount: '4000.00',
+      withholdings: [{ type: 'ISS', amount: '200.00' }],
+      competence: '2026-08',
+      issueDate: '2026-08-01',
+      dueDate: '2026-09-01',
+      companyId: fixtures.companyB,
+    });
+    await createNote(
+      {
+        number: 'NFS-003',
+        grossAmount: '2000.00',
+        withholdings: [{ type: 'IRRF', amount: '30.00' }],
+        competence: '2026-05',
+        issueDate: '2026-05-20',
+        dueDate: '2026-06-20',
+        projectId: fixtures.projectB,
+      },
+      '2026-06-18',
+    );
+    await context.prisma.receivable.create({
+      data: {
+        description: 'Recebível antigo sem obra',
+        clientName: 'Cliente Antigo',
+        grossAmount: '600.00',
+        netAmount: '600.00',
+        competence: new Date('2026-09-01'),
+        issueDate: new Date('2026-09-01'),
+        dueDate: new Date('2026-09-10'),
+        receiptDate: new Date('2026-09-05'),
+        status: 'PAID',
+        companyId: fixtures.companyA,
+      },
+    });
   });
 
   interface MonthRow {
     month: string;
     inflow: string;
+    inflowGross: string;
+    inflowWithholdings: string;
     outflow: string;
-    outflowGross: string;
-    withholdings: string;
     balance: string;
     accumulatedBalance: string;
   }
@@ -133,8 +200,17 @@ describe('Relatórios (/reports)', () => {
   const byMonth = (body: { months: MonthRow[] }): Record<string, MonthRow> =>
     Object.fromEntries(body.months.map((m) => [m.month, m]));
 
+  const MONTHS = ['2026-06', '2026-07', '2026-08', '2026-09'];
+
+  const sumOf = (rows: { netAmount: string }[]) =>
+    rows
+      .reduce((acc, row) => acc + Math.round(Number(row.netAmount) * 100), 0)
+      .toString();
+
+  const cents = (value: string) => Math.round(Number(value) * 100).toString();
+
   describe('fluxo de caixa', () => {
-    it('em competência usa a emissão e desloca as contas faturadas', async () => {
+    it('em competência soma o líquido das notas pela competência e desloca as faturadas', async () => {
       const response = await server()
         .get('/reports/cashflow?from=2026-06&to=2026-09&regime=accrual')
         .expect(200);
@@ -148,26 +224,31 @@ describe('Relatórios (/reports)', () => {
         accumulatedBalance: '3500.00',
       });
       expect(meses['2026-07']).toMatchObject({
+        inflow: '8400.00',
+        inflowGross: '10000.00',
+        inflowWithholdings: '1600.00',
         outflow: '2250.00',
-        accumulatedBalance: '1250.00',
+        accumulatedBalance: '9650.00',
       });
       expect(meses['2026-08']).toMatchObject({
-        inflow: '0.00',
+        inflow: '3800.00',
+        inflowWithholdings: '200.00',
         outflow: '0.00',
-        balance: '0.00',
-        accumulatedBalance: '1250.00',
+        accumulatedBalance: '13450.00',
       });
       expect(meses['2026-09']).toMatchObject({
+        inflow: '600.00',
         outflow: '1000.00',
-        accumulatedBalance: '250.00',
+        balance: '-400.00',
+        accumulatedBalance: '13050.00',
       });
 
-      expect(response.body.totals).toMatchObject({
-        inflow: '5000.00',
+      expect(response.body.totals).toEqual({
+        inflow: '17800.00',
+        inflowGross: '19600.00',
+        inflowWithholdings: '1800.00',
         outflow: '4750.00',
-        outflowGross: '5000.00',
-        withholdings: '250.00',
-        balance: '250.00',
+        balance: '13050.00',
       });
       expect(response.body.consolidated).toBe(true);
     });
@@ -182,7 +263,15 @@ describe('Relatórios (/reports)', () => {
       expect(junho.outflow).not.toBe('1800.00');
     });
 
-    it('em caixa conta apenas o que foi efetivamente pago', async () => {
+    it('não usa a emissão nem o recebimento da nota em competência', async () => {
+      const response = await server()
+        .get('/reports/cashflow?from=2026-05&to=2026-05&regime=accrual')
+        .expect(200);
+
+      expect(response.body.totals.inflow).toBe('1970.00');
+    });
+
+    it('em caixa conta apenas o que foi efetivamente pago e recebido', async () => {
       const response = await server()
         .get('/reports/cashflow?from=2026-06&to=2026-09&regime=cash')
         .expect(200);
@@ -190,7 +279,8 @@ describe('Relatórios (/reports)', () => {
       const meses = byMonth(response.body);
 
       expect(meses['2026-06']).toMatchObject({
-        inflow: '0.00',
+        inflow: '1970.00',
+        inflowWithholdings: '30.00',
         outflow: '0.00',
       });
       expect(meses['2026-07']).toMatchObject({
@@ -198,12 +288,16 @@ describe('Relatórios (/reports)', () => {
         outflow: '1000.00',
         balance: '4000.00',
       });
-      expect(meses['2026-09']).toMatchObject({ outflow: '0.00' });
+      expect(meses['2026-08']).toMatchObject({ inflow: '8400.00' });
+      expect(meses['2026-09']).toMatchObject({
+        inflow: '600.00',
+        outflow: '0.00',
+      });
 
       expect(response.body.totals).toMatchObject({
-        inflow: '5000.00',
+        inflow: '15970.00',
         outflow: '1000.00',
-        balance: '4000.00',
+        balance: '14970.00',
       });
     });
 
@@ -230,7 +324,10 @@ describe('Relatórios (/reports)', () => {
 
       expect(response.body.consolidated).toBe(false);
       expect(byMonth(response.body)['2026-06'].outflow).toBe('1000.00');
-      expect(response.body.totals.outflow).toBe('4250.00');
+      expect(response.body.totals).toMatchObject({
+        inflow: '14000.00',
+        outflow: '4250.00',
+      });
     });
 
     it('filtra por obra', async () => {
@@ -240,7 +337,10 @@ describe('Relatórios (/reports)', () => {
         )
         .expect(200);
 
-      expect(response.body.totals.outflow).toBe('2250.00');
+      expect(response.body.totals).toMatchObject({
+        inflow: '8400.00',
+        outflow: '2250.00',
+      });
     });
 
     it('usa competência como regime padrão', async () => {
@@ -251,29 +351,147 @@ describe('Relatórios (/reports)', () => {
       expect(response.body.regime).toBe('accrual');
       expect(response.body.totals.outflow).toBe('4750.00');
     });
+
+    it('bate, mês a mês, com as telas de boletos e de notas de serviço', async () => {
+      const bases = [
+        {
+          regime: 'accrual',
+          bills: 'regime=accrual',
+          notes: 'dateBasis=competence',
+        },
+        {
+          regime: 'cash',
+          bills: 'dateBasis=payment',
+          notes: 'dateBasis=receipt',
+        },
+      ];
+
+      for (const basis of bases) {
+        for (const companyId of ['', fixtures.companyA, fixtures.companyB]) {
+          const company = companyId ? `&companyId=${companyId}` : '';
+          const report = await server()
+            .get(
+              `/reports/cashflow?from=2026-06&to=2026-09&regime=${basis.regime}${company}`,
+            )
+            .expect(200);
+          const meses = byMonth(report.body);
+
+          for (const month of MONTHS) {
+            const bills = await server()
+              .get(`/bills?month=${month}&${basis.bills}${company}`)
+              .expect(200);
+            const notes = await server()
+              .get(`/receivables?month=${month}&${basis.notes}${company}`)
+              .expect(200);
+
+            expect(cents(meses[month].outflow)).toBe(sumOf(bills.body));
+            expect(cents(meses[month].inflow)).toBe(sumOf(notes.body));
+          }
+        }
+      }
+    });
   });
 
-  describe('retenções', () => {
-    it('agrupa por empresa e por tipo de imposto', async () => {
+  describe('retenções sofridas', () => {
+    it('agrupa as retenções das notas por empresa, por tipo e por obra', async () => {
       const response = await server()
         .get('/reports/withholdings?from=2026-06&to=2026-09')
         .expect(200);
 
-      expect(response.body.totals).toMatchObject({
-        billCount: 1,
-        total: '250.00',
+      expect(response.body.totals).toEqual({
+        invoiceCount: 2,
+        total: '1800.00',
+        grossAmount: '14000.00',
+        netAmount: '12200.00',
+        byType: [
+          { type: 'INSS', amount: '1100.00' },
+          { type: 'ISS', amount: '700.00' },
+        ],
       });
-      expect(response.body.totals.byType).toEqual([
-        { type: 'INSS', amount: '250.00' },
+      expect(response.body.companies).toEqual([
+        {
+          companyId: fixtures.companyA,
+          legalName: 'Terraplenagem Teste LTDA',
+          cnpj: '11111111000191',
+          invoiceCount: 1,
+          total: '1600.00',
+          byType: [
+            { type: 'INSS', amount: '1100.00' },
+            { type: 'ISS', amount: '500.00' },
+          ],
+        },
+        {
+          companyId: fixtures.companyB,
+          legalName: 'Transporte Teste LTDA',
+          cnpj: '22222222000172',
+          invoiceCount: 1,
+          total: '200.00',
+          byType: [{ type: 'ISS', amount: '200.00' }],
+        },
       ]);
-      expect(response.body.companies).toHaveLength(1);
-      expect(response.body.companies[0]).toMatchObject({
-        legalName: 'Terraplenagem Teste LTDA',
+      expect(
+        response.body.projects.map(
+          (project: { name: string; total: string }) =>
+            `${project.name}=${project.total}`,
+        ),
+      ).toEqual(['Obra Beta=1600.00', 'Obra Alfa=200.00']);
+    });
+
+    it('lista cada nota com uma coluna por tipo de retenção', async () => {
+      const response = await server()
+        .get('/reports/withholdings?from=2026-06&to=2026-09')
+        .expect(200);
+
+      expect(
+        response.body.invoices.map(
+          (invoice: { number: string }) => invoice.number,
+        ),
+      ).toEqual(['NFS-002', 'NFS-101']);
+      expect(response.body.invoices[0]).toMatchObject({
+        projectName: 'Obra Beta',
+        clientName: 'Cliente Alfa',
+        grossAmount: '10000.00',
+        withholdingTotal: '1600.00',
+        netAmount: '8400.00',
+        amountsByType: {
+          INSS: '1100.00',
+          ISS: '500.00',
+          IRRF: '0.00',
+          PIS_COFINS_CSLL: '0.00',
+        },
+      });
+    });
+
+    it('mostra as retenções antigas das contas a pagar num bloco separado, fora dos totais', async () => {
+      const response = await server()
+        .get('/reports/withholdings?from=2026-06&to=2026-09')
+        .expect(200);
+
+      expect(response.body.totals.total).toBe('1800.00');
+      expect(response.body.legacy.totals).toEqual({
         billCount: 1,
         total: '250.00',
+        byType: [{ type: 'INSS', amount: '250.00' }],
       });
-      expect(response.body.bills).toHaveLength(1);
-      expect(response.body.bills[0].documentNumber).toBe('NF-COM-RETENCAO');
+      expect(response.body.legacy.bills[0]).toMatchObject({
+        documentNumber: 'NF-COM-RETENCAO',
+        grossAmount: '2500.00',
+        netAmount: '2250.00',
+        amountsByType: { INSS: '250.00', ISS: '0.00' },
+      });
+    });
+
+    it('em caixa usa a data de recebimento da nota', async () => {
+      const response = await server()
+        .get('/reports/withholdings?from=2026-06&to=2026-09&regime=cash')
+        .expect(200);
+
+      expect(
+        response.body.invoices.map(
+          (invoice: { number: string }) => invoice.number,
+        ),
+      ).toEqual(['NFS-003', 'NFS-002']);
+      expect(response.body.totals.total).toBe('1630.00');
     });
 
     it('não traz nada em período sem retenção', async () => {
@@ -282,65 +500,127 @@ describe('Relatórios (/reports)', () => {
         .expect(200);
 
       expect(response.body.totals.total).toBe('0.00');
-      expect(response.body.bills).toHaveLength(0);
+      expect(response.body.invoices).toHaveLength(0);
+      expect(response.body.legacy.bills).toHaveLength(0);
     });
   });
 
-  describe('custo por obra', () => {
-    it('usa o valor bruto, ordena por custo e separa despesas sem obra', async () => {
+  describe('resultado por obra', () => {
+    it('calcula receita, recebido no período, custo e resultado de cada obra', async () => {
       const response = await server()
-        .get('/reports/project-costs?from=2026-06&to=2026-09')
+        .get('/reports/project-results?from=2026-06&to=2026-09')
         .expect(200);
 
-      const nomes = response.body.projects.map((p: { name: string }) => p.name);
-      expect(nomes).toEqual([
-        'Obra Beta',
-        'Obra Alfa',
-        'Despesas administrativas (sem obra)',
-      ]);
-
-      const [beta, alfa, admin] = response.body.projects;
+      const [beta, alfa] = response.body.projects;
+      expect(response.body.projects).toHaveLength(2);
       expect(beta).toMatchObject({
-        grossTotal: '2500.00',
-        netTotal: '2250.00',
+        name: 'Obra Beta',
+        revenue: {
+          invoiceCount: 1,
+          grossAmount: '10000.00',
+          withholdingTotal: '1600.00',
+          netAmount: '8400.00',
+        },
+        received: '10370.00',
+        outstanding: '0.00',
+        result: '7870.00',
       });
-      expect(alfa.grossTotal).toBe('2000.00');
-      expect(admin.grossTotal).toBe('500.00');
+      expect(alfa).toMatchObject({
+        name: 'Obra Alfa',
+        revenue: {
+          invoiceCount: 2,
+          grossAmount: '9000.00',
+          netAmount: '8800.00',
+        },
+        received: '5000.00',
+        outstanding: '3800.00',
+        result: '3000.00',
+      });
+    });
+
+    it('usa o valor bruto das contas antigas e quebra o custo por categoria', async () => {
+      const response = await server()
+        .get('/reports/project-results?from=2026-06&to=2026-09')
+        .expect(200);
+
+      const [beta, alfa] = response.body.projects;
+      expect(beta.cost).toEqual({
+        billCount: 1,
+        total: '2500.00',
+        byCategory: [
+          {
+            categoryId: fixtures.categoryAlt,
+            name: 'Locação de Equipamentos',
+            billCount: 1,
+            total: '2500.00',
+          },
+        ],
+      });
+      expect(alfa.cost.byCategory[0]).toMatchObject({
+        name: 'Combustível',
+        billCount: 3,
+        total: '2000.00',
+      });
+    });
+
+    it('separa despesas administrativas e receitas sem obra, somando no consolidado', async () => {
+      const response = await server()
+        .get('/reports/project-results?from=2026-06&to=2026-09')
+        .expect(200);
+
+      expect(response.body.administrative).toMatchObject({
+        billCount: 1,
+        total: '500.00',
+      });
+      expect(response.body.unassignedRevenue).toEqual({
+        revenue: {
+          invoiceCount: 1,
+          grossAmount: '600.00',
+          withholdingTotal: '0.00',
+          netAmount: '600.00',
+        },
+        received: '600.00',
+        outstanding: '0.00',
+      });
+      expect(response.body.totals).toEqual({
+        revenue: {
+          invoiceCount: 4,
+          grossAmount: '19600.00',
+          withholdingTotal: '1800.00',
+          netAmount: '17800.00',
+        },
+        received: '15970.00',
+        outstanding: '3800.00',
+        projectCost: '4500.00',
+        administrativeCost: '500.00',
+        cost: '5000.00',
+        result: '10970.00',
+      });
+    });
+
+    it('em caixa usa o recebimento das notas e o pagamento dos boletos', async () => {
+      const response = await server()
+        .get('/reports/project-results?from=2026-06&to=2026-09&regime=cash')
+        .expect(200);
 
       expect(response.body.totals).toMatchObject({
-        billCount: 5,
-        grossTotal: '5000.00',
-        netTotal: '4750.00',
+        received: '15970.00',
+        cost: '1000.00',
+        result: '14970.00',
       });
     });
 
-    it('calcula a participação percentual de cada obra', async () => {
+    it('filtra por obra', async () => {
       const response = await server()
-        .get('/reports/project-costs?from=2026-06&to=2026-09')
+        .get(
+          `/reports/project-results?from=2026-06&to=2026-09&projectId=${fixtures.projectA}`,
+        )
         .expect(200);
 
-      const shares = response.body.projects.map(
-        (p: { shareOfTotal: string }) => p.shareOfTotal,
-      );
-      expect(shares).toEqual(['50.00', '40.00', '10.00']);
-    });
-
-    it('quebra o custo da obra por categoria', async () => {
-      const response = await server()
-        .get('/reports/project-costs?from=2026-06&to=2026-09')
-        .expect(200);
-
-      const alfa = response.body.projects.find(
-        (p: { name: string }) => p.name === 'Obra Alfa',
-      );
-      const combustivel = alfa.byCategory.find(
-        (c: { name: string }) => c.name === 'Combustível',
-      );
-
-      expect(combustivel).toMatchObject({
-        billCount: 3,
-        grossTotal: '2000.00',
-      });
+      expect(response.body.projects).toHaveLength(1);
+      expect(response.body.projects[0].name).toBe('Obra Alfa');
+      expect(response.body.administrative.total).toBe('0.00');
+      expect(response.body.unassignedRevenue).toBeNull();
     });
   });
 
@@ -383,7 +663,7 @@ describe('Relatórios (/reports)', () => {
         .get('/reports/withholdings?from=2026-09&to=2026-06')
         .expect(400);
       await server()
-        .get('/reports/project-costs?from=2026-09&to=2026-06')
+        .get('/reports/project-results?from=2026-09&to=2026-06')
         .expect(400);
     });
   });

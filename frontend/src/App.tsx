@@ -1,4 +1,4 @@
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom';
 import { ProtectedRoute } from './auth/ProtectedRoute';
 import { RequireAdmin } from './auth/RequireAdmin';
 import { AppLayout } from './components/layout/AppLayout';
@@ -12,12 +12,17 @@ import { InvoicesPage } from './features/invoices/InvoicesPage';
 import { ProjectsPage } from './features/projects/ProjectsPage';
 import { ProjectDetailPage } from './features/projects/ProjectDetailPage';
 import { CashflowReportPage } from './features/reports/CashflowReportPage';
-import { ProjectCostsReportPage } from './features/reports/ProjectCostsReportPage';
+import { ProjectResultsReportPage } from './features/reports/ProjectResultsReportPage';
 import { ReportsLayout } from './features/reports/ReportsLayout';
 import { WithholdingsReportPage } from './features/reports/WithholdingsReportPage';
 import { ReceivablesPage } from './features/receivables/ReceivablesPage';
 import { SuppliersPage } from './features/suppliers/SuppliersPage';
 import { UsersPage } from './features/users/UsersPage';
+
+function RedirectKeepingSearch({ to }: { to: string }) {
+  const { search } = useLocation();
+  return <Navigate to={{ pathname: to, search }} replace />;
+}
 
 export function App() {
   return (
@@ -35,7 +40,14 @@ export function App() {
             <Route index element={<CashflowReportPage />} />
             <Route path="cashflow" element={<CashflowReportPage />} />
             <Route path="withholdings" element={<WithholdingsReportPage />} />
-            <Route path="project-costs" element={<ProjectCostsReportPage />} />
+            <Route
+              path="project-results"
+              element={<ProjectResultsReportPage />}
+            />
+            <Route
+              path="project-costs"
+              element={<RedirectKeepingSearch to="/reports/project-results" />}
+            />
           </Route>
         </Route>
 

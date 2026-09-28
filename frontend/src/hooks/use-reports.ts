@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import {
   getCashflowReport,
-  getProjectCostsReport,
+  getProjectResultsReport,
   getWithholdingsReport,
 } from '../api/reports';
 import type { ReportPeriodFilters } from '../api/types';
@@ -23,5 +23,5 @@ export const useCashflowReport = (filters: ReportPeriodFilters | null) =>
 export const useWithholdingsReport = (filters: ReportPeriodFilters | null) =>
   useQuery(reportQuery('withholdings', filters, getWithholdingsReport));
 
-export const useProjectCostsReport = (filters: ReportPeriodFilters | null) =>
-  useQuery(reportQuery('project-costs', filters, getProjectCostsReport));
+export const useProjectResultsReport = (filters: ReportPeriodFilters | null) =>
+  useQuery(reportQuery('project-results', filters, getProjectResultsReport));

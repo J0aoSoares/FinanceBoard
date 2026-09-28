@@ -7,7 +7,7 @@ import { ApiError } from '../../lib/http';
 import { formatMonth } from '../../lib/date';
 import { csvMoney, downloadCsv, reportFileName } from '../../lib/csv';
 import type { CashflowReport } from '../../api/types';
-import { CashflowChart, type OutflowMode } from './CashflowChart';
+import { CashflowChart, type InflowMode } from './CashflowChart';
 import { CashflowTable } from './CashflowTable';
 import { ReportEmptyState } from './ReportEmptyState';
 import { ReportHeader } from './ReportHeader';
@@ -16,27 +16,27 @@ import { ReportSkeleton } from './ReportSkeleton';
 const buildCsvRows = (report: CashflowReport) => [
   [
     'Mês',
-    'Entradas',
-    'Saída bruta',
-    'Retenções',
-    'Saída líquida',
+    'Faturado bruto',
+    'Retenções sofridas',
+    'Entradas líquidas',
+    'Saídas',
     'Saldo',
     'Saldo acumulado',
   ],
   ...report.months.map((month) => [
     formatMonth(month.month),
+    csvMoney(month.inflowGross),
+    csvMoney(month.inflowWithholdings),
     csvMoney(month.inflow),
-    csvMoney(month.outflowGross),
-    csvMoney(month.withholdings),
     csvMoney(month.outflow),
     csvMoney(month.balance),
     csvMoney(month.accumulatedBalance),
   ]),
   [
     'Total do período',
+    csvMoney(report.totals.inflowGross),
+    csvMoney(report.totals.inflowWithholdings),
     csvMoney(report.totals.inflow),
-    csvMoney(report.totals.outflowGross),
-    csvMoney(report.totals.withholdings),
     csvMoney(report.totals.outflow),
     csvMoney(report.totals.balance),
     '',
@@ -44,11 +44,11 @@ const buildCsvRows = (report: CashflowReport) => [
 ];
 
 const hasMovement = (report: CashflowReport) =>
-  report.totals.inflow !== '0.00' || report.totals.outflowGross !== '0.00';
+  report.totals.inflowGross !== '0.00' || report.totals.outflow !== '0.00';
 
 export function CashflowReportPage() {
   const { filters, periodError } = useReportFilters();
-  const [outflowMode, setOutflowMode] = useState<OutflowMode>('net');
+  const [inflowMode, setInflowMode] = useState<InflowMode>('net');
 
   const { data, isLoading, isError, error, isFetching } =
     useCashflowReport(filters);
@@ -96,23 +96,23 @@ export function CashflowReportPage() {
         <Stack gap="md">
           <Group justify="space-between" align="center" wrap="wrap">
             <Text size="xs" c="dimmed">
-              A série de saída mostra valores{' '}
-              {outflowMode === 'gross'
-                ? 'brutos, antes das retenções — é este o número que fecha com o relatório de retenções.'
-                : 'líquidos, o que efetivamente sai do caixa.'}
+              A série de entrada mostra{' '}
+              {inflowMode === 'gross'
+                ? 'o faturado bruto das notas, antes das retenções sofridas.'
+                : 'o líquido das notas, o que efetivamente entra no caixa.'}
             </Text>
             <SegmentedControl
               size="xs"
-              value={outflowMode}
-              onChange={(value) => setOutflowMode(value as OutflowMode)}
+              value={inflowMode}
+              onChange={(value) => setInflowMode(value as InflowMode)}
               data={[
-                { label: 'Saída líquida', value: 'net' },
-                { label: 'Saída bruta', value: 'gross' },
+                { label: 'Entrada líquida', value: 'net' },
+                { label: 'Faturado bruto', value: 'gross' },
               ]}
             />
           </Group>
 
-          <CashflowChart months={data.months} outflowMode={outflowMode} />
+          <CashflowChart months={data.months} inflowMode={inflowMode} />
           <CashflowTable report={data} />
 
           {isFetching && (

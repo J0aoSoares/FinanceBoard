@@ -52,7 +52,6 @@ describe('Notas de serviço (/receivables)', () => {
       });
       expect(response.body.grossAmount).toBe('5000');
       expect(response.body.netAmount).toBe('5000');
-      expect(response.body.amount).toBe('5000');
       expect(response.body.competence).toContain('2026-06-01');
     });
 
@@ -64,7 +63,6 @@ describe('Notas de serviço (/receivables)', () => {
 
       expect(response.body.grossAmount).toBe('5000');
       expect(response.body.netAmount).toBe('4200');
-      expect(response.body.amount).toBe('4200');
       expect(response.body.withholdingTotal).toBe('800.00');
       expect(
         response.body.withholdings.map(
@@ -294,7 +292,6 @@ describe('Notas de serviço (/receivables)', () => {
         .send({ grossAmount: '6000.00' })
         .expect(200);
       expect(regrossed.body.netAmount).toBe('5925');
-      expect(regrossed.body.amount).toBe('5925');
     });
 
     it('recusa editar nota já recebida ou tirar a obra', async () => {
@@ -326,7 +323,6 @@ describe('Notas de serviço (/receivables)', () => {
         data: {
           description: 'Recebível antigo',
           clientName: 'Cliente Antigo',
-          amount: '1000.00',
           grossAmount: '1000.00',
           netAmount: '1000.00',
           competence: new Date('2026-05-01'),

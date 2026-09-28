@@ -1,0 +1,66 @@
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(12rem, 1fr));
+  gap: var(--fb-space-md);
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: var(--fb-space-md);
+  background-color: var(--fb-surface);
+  border: 1px solid var(--fb-border);
+  border-radius: var(--fb-radius-lg);
+  box-shadow: var(--fb-shadow-xs);
+}
+
+.cardLabel {
+  font-size: var(--fb-font-size-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--fb-text-muted);
+}
+
+.cardHint {
+  font-size: var(--fb-font-size-xs);
+  color: var(--fb-text-muted);
+}
+
+.dense {
+  font-size: var(--fb-font-size-sm);
+}
+
+.dense th,
+.dense td {
+  padding: 0.375rem var(--fb-space-sm);
+  white-space: nowrap;
+}
+
+.expand {
+  display: flex;
+  gap: var(--fb-space-xs);
+  align-items: flex-start;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  text-align: left;
+  cursor: pointer;
+  background: none;
+  border: none;
+}
+
+.categoryRow td {
+  font-size: var(--fb-font-size-xs);
+  color: var(--fb-text-muted);
+  background-color: var(--fb-surface-sunken);
+}
+
+.categoryName {
+  padding-left: calc(var(--fb-space-md) * 2) !important;
+}
+
+.separateRow td {
+  font-style: italic;
+  background-color: var(--fb-surface-sunken);
+}

@@ -201,7 +201,6 @@ export interface Receivable {
   number: string | null;
   description: string;
   clientName: string;
-  amount: Money;
   grossAmount: Money;
   netAmount: Money;
   withholdingTotal: Money;
@@ -324,18 +323,18 @@ interface ReportEcho {
 export interface CashflowMonth {
   month: string;
   inflow: Money;
+  inflowGross: Money;
+  inflowWithholdings: Money;
   outflow: Money;
-  outflowGross: Money;
-  withholdings: Money;
   balance: Money;
   accumulatedBalance: Money;
 }
 
 export interface CashflowTotals {
   inflow: Money;
+  inflowGross: Money;
+  inflowWithholdings: Money;
   outflow: Money;
-  outflowGross: Money;
-  withholdings: Money;
   balance: Money;
 }
 
@@ -349,62 +348,114 @@ export interface WithholdingByType {
   amount: Money;
 }
 
-export interface WithholdingCompany {
-  companyId: string;
-  legalName: string;
-  cnpj: string;
-  billCount: number;
+export interface WithholdingGroup {
+  invoiceCount: number;
   total: Money;
   byType: WithholdingByType[];
 }
 
-export interface WithholdingBillDetail {
+export interface WithholdingCompany extends WithholdingGroup {
+  companyId: string;
+  legalName: string;
+  cnpj: string;
+}
+
+export interface WithholdingProject extends WithholdingGroup {
+  projectId: string | null;
+  name: string;
+}
+
+export interface WithholdingInvoiceDetail {
+  id: string;
+  number: string | null;
+  companyId: string;
+  legalName: string;
+  cnpj: string;
+  projectId: string | null;
+  projectName: string | null;
+  clientName: string;
+  competence: string;
+  issueDate: string;
+  receiptDate: string | null;
+  grossAmount: Money;
+  withholdingTotal: Money;
+  netAmount: Money;
+  amountsByType: Record<TaxType, Money>;
+}
+
+export interface LegacyWithholdingBill {
   id: string;
   documentNumber: string;
   companyId: string;
+  legalName: string;
+  cnpj: string;
   supplierName: string;
   referenceDate: string | null;
   grossAmount: Money;
-  netAmount: Money;
   withholdingTotal: Money;
-  withholdings: WithholdingByType[];
+  netAmount: Money;
+  amountsByType: Record<TaxType, Money>;
 }
 
 export interface WithholdingReport extends ReportEcho {
   companies: WithholdingCompany[];
-  bills: WithholdingBillDetail[];
-  totals: {
-    billCount: number;
-    total: Money;
-    byType: WithholdingByType[];
+  projects: WithholdingProject[];
+  invoices: WithholdingInvoiceDetail[];
+  totals: WithholdingGroup & { grossAmount: Money; netAmount: Money };
+  legacy: {
+    bills: LegacyWithholdingBill[];
+    totals: { billCount: number; total: Money; byType: WithholdingByType[] };
   };
+}
+
+export interface ProjectRevenue {
+  invoiceCount: number;
+  grossAmount: Money;
+  withholdingTotal: Money;
+  netAmount: Money;
 }
 
 export interface ProjectCostCategory {
   categoryId: string;
   name: string;
   billCount: number;
-  grossTotal: Money;
+  total: Money;
 }
 
-export interface ProjectCostEntry {
+export interface ProjectCost {
+  billCount: number;
+  total: Money;
+  byCategory: ProjectCostCategory[];
+}
+
+export interface ProjectResultEntry {
   projectId: string | null;
   name: string;
   clientName: string | null;
   status: ProjectStatus | null;
-  billCount: number;
-  grossTotal: Money;
-  netTotal: Money;
-  shareOfTotal: string;
-  byCategory: ProjectCostCategory[];
+  revenue: ProjectRevenue;
+  received: Money;
+  outstanding: Money;
+  cost: ProjectCost;
+  result: Money;
 }
 
-export interface ProjectCostReport extends ReportEcho {
-  projects: ProjectCostEntry[];
+export interface ProjectResultReport extends ReportEcho {
+  projects: ProjectResultEntry[];
+  administrative: ProjectCost;
+  unassignedRevenue: {
+    revenue: ProjectRevenue;
+    received: Money;
+    outstanding: Money;
+  } | null;
   totals: {
-    billCount: number;
-    grossTotal: Money;
-    netTotal: Money;
+    revenue: ProjectRevenue;
+    received: Money;
+    outstanding: Money;
+    projectCost: Money;
+    administrativeCost: Money;
+    cost: Money;
+    result: Money;
   };
 }
 

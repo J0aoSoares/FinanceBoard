@@ -532,7 +532,6 @@ async function main() {
         ...rest,
         grossAmount,
         netAmount,
-        amount: netAmount,
         competence: new Date(`${competence}-01`),
         issueDate: new Date(rest.issueDate),
         dueDate: new Date(rest.dueDate),

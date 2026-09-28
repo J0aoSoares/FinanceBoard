@@ -1,28 +1,29 @@
+import { Alert, Button, Collapse, Group, Stack, Text } from '@mantine/core';
 import {
-  Alert,
-  Button,
-  Collapse,
-  Group,
-  Stack,
-  Switch,
-  Text,
-} from '@mantine/core';
-import { IconAlertTriangle, IconChevronRight } from '@tabler/icons-react';
-import { useState } from 'react';
+  IconAlertTriangle,
+  IconChevronRight,
+  IconDownload,
+} from '@tabler/icons-react';
+import { useState, type ReactNode } from 'react';
 import { MoneyText } from '../../components/display/MoneyText';
 import tableClasses from '../../components/display/DataTable.module.css';
 import { useWithholdingsReport } from '../../hooks/use-reports';
 import { useReportFilters } from '../../hooks/use-report-filters';
 import { ApiError } from '../../lib/http';
-import { formatDate } from '../../lib/date';
+import { formatCompetence, formatDate } from '../../lib/date';
 import { formatCnpj } from '../../lib/document';
-import { csvMoney, downloadCsv, reportFileName } from '../../lib/csv';
+import { downloadCsv, reportFileName, type CsvCell } from '../../lib/csv';
 import type { Money } from '../../lib/money';
+import {
+  amountOf,
+  companyCsvRows,
+  invoiceCsvRows,
+  legacyCsvRows,
+  projectCsvRows,
+} from '../../lib/withholding-report';
 import {
   TAX_TYPES,
   TAX_TYPE_LABELS,
-  type TaxType,
-  type WithholdingBillDetail,
   type WithholdingByType,
   type WithholdingReport,
 } from '../../api/types';
@@ -33,116 +34,366 @@ import classes from './WithholdingsReportPage.module.css';
 
 const ZERO: Money = '0.00';
 
-const amountOf = (entries: WithholdingByType[], type: TaxType): Money =>
-  entries.find((entry) => entry.type === type)?.amount ?? ZERO;
+function Amount({ value }: { value: Money }) {
+  return (
+    <MoneyText value={value} tone={value === ZERO ? 'muted' : 'default'} />
+  );
+}
 
-const buildCsvRows = (report: WithholdingReport) => [
-  [
-    'Documento',
-    'Fornecedor',
-    'Data de referência',
-    'Bruto',
-    'Líquido',
-    ...TAX_TYPES.map((type) => TAX_TYPE_LABELS[type]),
-    'Total retido',
-  ],
-  ...report.bills.map((bill) => [
-    bill.documentNumber,
-    bill.supplierName,
-    formatDate(bill.referenceDate),
-    csvMoney(bill.grossAmount),
-    csvMoney(bill.netAmount),
-    ...TAX_TYPES.map((type) => csvMoney(amountOf(bill.withholdings, type))),
-    csvMoney(bill.withholdingTotal),
-  ]),
-  [
-    `Total — ${report.totals.billCount} contas`,
-    '',
-    '',
-    '',
-    '',
-    ...TAX_TYPES.map((type) => csvMoney(amountOf(report.totals.byType, type))),
-    csvMoney(report.totals.total),
-  ],
-];
+function TypeCells({ byType }: { byType: WithholdingByType[] }) {
+  return (
+    <>
+      {TAX_TYPES.map((type) => (
+        <td key={type} className={tableClasses.numeric}>
+          <Amount value={amountOf(byType, type)} />
+        </td>
+      ))}
+    </>
+  );
+}
 
-function BillsTable({ bills }: { bills: WithholdingBillDetail[] }) {
+function TypeHeaders() {
+  return (
+    <>
+      {TAX_TYPES.map((type) => (
+        <th key={type} className={tableClasses.numeric}>
+          {TAX_TYPE_LABELS[type]}
+        </th>
+      ))}
+    </>
+  );
+}
+
+function Section({
+  title,
+  onExport,
+  children,
+}: {
+  title: string;
+  onExport: () => void;
+  children: ReactNode;
+}) {
+  return (
+    <Stack gap={6}>
+      <Group justify="space-between" align="center">
+        <Text fw={600} size="sm">
+          {title}
+        </Text>
+        <Button
+          size="compact-xs"
+          variant="subtle"
+          color="gray"
+          leftSection={<IconDownload size={13} />}
+          onClick={onExport}
+        >
+          CSV
+        </Button>
+      </Group>
+      {children}
+    </Stack>
+  );
+}
+
+function SummaryTables({
+  report,
+  exportRows,
+}: {
+  report: WithholdingReport;
+  exportRows: (name: string, rows: CsvCell[][]) => void;
+}) {
+  const totalRow = (leading: number) => (
+    <tr className={tableClasses.footer}>
+      <td colSpan={leading}>Total</td>
+      <td className={tableClasses.numeric}>{report.totals.invoiceCount}</td>
+      <TypeCells byType={report.totals.byType} />
+      <td className={tableClasses.numeric}>
+        <MoneyText value={report.totals.total} strong />
+      </td>
+    </tr>
+  );
+
+  return (
+    <div className={classes.summaries}>
+      <Section
+        title="Por empresa"
+        onExport={() =>
+          exportRows('retencoes-por-empresa', companyCsvRows(report))
+        }
+      >
+        <div className={tableClasses.wrapper}>
+          <table className={`${tableClasses.table} ${classes.dense}`}>
+            <thead>
+              <tr>
+                <th>Empresa</th>
+                <th className={tableClasses.numeric}>Notas</th>
+                <TypeHeaders />
+                <th className={tableClasses.numeric}>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {report.companies.map((company) => (
+                <tr key={company.companyId}>
+                  <td>
+                    {company.legalName}
+                    <span className={`${tableClasses.secondary} fb-numeric`}>
+                      {formatCnpj(company.cnpj)}
+                    </span>
+                  </td>
+                  <td className={tableClasses.numeric}>
+                    {company.invoiceCount}
+                  </td>
+                  <TypeCells byType={company.byType} />
+                  <td className={tableClasses.numeric}>
+                    <MoneyText value={company.total} strong />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>{totalRow(1)}</tfoot>
+          </table>
+        </div>
+      </Section>
+
+      <Section
+        title="Por obra"
+        onExport={() =>
+          exportRows('retencoes-por-obra', projectCsvRows(report))
+        }
+      >
+        <div className={tableClasses.wrapper}>
+          <table className={`${tableClasses.table} ${classes.dense}`}>
+            <thead>
+              <tr>
+                <th>Obra</th>
+                <th className={tableClasses.numeric}>Notas</th>
+                <TypeHeaders />
+                <th className={tableClasses.numeric}>Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {report.projects.map((project) => (
+                <tr key={project.projectId ?? 'sem-obra'}>
+                  <td>{project.name}</td>
+                  <td className={tableClasses.numeric}>
+                    {project.invoiceCount}
+                  </td>
+                  <TypeCells byType={project.byType} />
+                  <td className={tableClasses.numeric}>
+                    <MoneyText value={project.total} strong />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+            <tfoot>{totalRow(1)}</tfoot>
+          </table>
+        </div>
+      </Section>
+    </div>
+  );
+}
+
+function InvoicesTable({ report }: { report: WithholdingReport }) {
   return (
     <div className={tableClasses.wrapper}>
-      <table className={tableClasses.table}>
+      <table className={`${tableClasses.table} ${classes.dense}`}>
         <thead>
           <tr>
-            <th>Documento</th>
-            <th>Fornecedor</th>
-            <th>Referência</th>
+            <th>Número</th>
+            <th>Empresa</th>
+            <th>Obra</th>
+            <th>Tomador</th>
+            <th>Comp.</th>
+            <th>Emissão</th>
+            <th>Recebim.</th>
             <th className={tableClasses.numeric}>Bruto</th>
-            <th className={tableClasses.numeric}>Líquido</th>
-            {TAX_TYPES.map((type) => (
-              <th key={type} className={tableClasses.numeric}>
-                {TAX_TYPE_LABELS[type]}
-              </th>
-            ))}
+            <TypeHeaders />
             <th className={tableClasses.numeric}>Total retido</th>
+            <th className={tableClasses.numeric}>Líquido</th>
           </tr>
         </thead>
         <tbody>
-          {bills.map((bill) => (
-            <tr key={bill.id}>
-              <td>{bill.documentNumber}</td>
-              <td>{bill.supplierName}</td>
-              <td>{formatDate(bill.referenceDate)}</td>
+          {report.invoices.map((invoice) => (
+            <tr key={invoice.id}>
+              <td>{invoice.number ?? '—'}</td>
+              <td>
+                {invoice.legalName}
+                <span className={`${tableClasses.secondary} fb-numeric`}>
+                  {formatCnpj(invoice.cnpj)}
+                </span>
+              </td>
+              <td>{invoice.projectName ?? '—'}</td>
+              <td>{invoice.clientName}</td>
+              <td>{formatCompetence(invoice.competence)}</td>
+              <td>{formatDate(invoice.issueDate)}</td>
+              <td>{formatDate(invoice.receiptDate)}</td>
               <td className={tableClasses.numeric}>
-                <MoneyText value={bill.grossAmount} />
+                <MoneyText value={invoice.grossAmount} />
+              </td>
+              {TAX_TYPES.map((type) => (
+                <td key={type} className={tableClasses.numeric}>
+                  <Amount value={invoice.amountsByType[type]} />
+                </td>
+              ))}
+              <td className={tableClasses.numeric}>
+                <MoneyText value={invoice.withholdingTotal} strong />
               </td>
               <td className={tableClasses.numeric}>
-                <MoneyText value={bill.netAmount} />
-              </td>
-              {TAX_TYPES.map((type) => {
-                const amount = amountOf(bill.withholdings, type);
-                return (
-                  <td key={type} className={tableClasses.numeric}>
-                    <MoneyText
-                      value={amount}
-                      tone={amount === ZERO ? 'muted' : 'default'}
-                    />
-                  </td>
-                );
-              })}
-              <td className={tableClasses.numeric}>
-                <MoneyText value={bill.withholdingTotal} strong />
+                <MoneyText value={invoice.netAmount} tone="inflow" />
               </td>
             </tr>
           ))}
         </tbody>
+        <tfoot>
+          <tr className={tableClasses.footer}>
+            <td colSpan={7}>
+              {report.totals.invoiceCount}{' '}
+              {report.totals.invoiceCount === 1 ? 'nota' : 'notas'}
+            </td>
+            <td className={tableClasses.numeric}>
+              <MoneyText value={report.totals.grossAmount} strong />
+            </td>
+            <TypeCells byType={report.totals.byType} />
+            <td className={tableClasses.numeric}>
+              <MoneyText value={report.totals.total} strong />
+            </td>
+            <td className={tableClasses.numeric}>
+              <MoneyText value={report.totals.netAmount} tone="inflow" strong />
+            </td>
+          </tr>
+        </tfoot>
       </table>
+    </div>
+  );
+}
+
+function LegacyBlock({
+  report,
+  onExport,
+}: {
+  report: WithholdingReport;
+  onExport: () => void;
+}) {
+  const [expanded, setExpanded] = useState(false);
+  const { bills, totals } = report.legacy;
+
+  return (
+    <div className={classes.legacy}>
+      <Group justify="space-between" align="center" wrap="wrap">
+        <Button
+          variant="subtle"
+          size="xs"
+          color="gray"
+          leftSection={
+            <IconChevronRight
+              size={15}
+              style={{
+                transform: expanded ? 'rotate(90deg)' : 'none',
+                transition: 'transform 150ms',
+              }}
+            />
+          }
+          onClick={() => setExpanded((previous) => !previous)}
+        >
+          Histórico: retenções lançadas em contas a pagar (modelo anterior) ·{' '}
+          {totals.billCount} {totals.billCount === 1 ? 'conta' : 'contas'}
+        </Button>
+        {expanded && (
+          <Button
+            size="compact-xs"
+            variant="subtle"
+            color="gray"
+            leftSection={<IconDownload size={13} />}
+            onClick={onExport}
+          >
+            CSV
+          </Button>
+        )}
+      </Group>
+
+      <Collapse expanded={expanded}>
+        <Stack gap="xs" pt="xs">
+          <Text size="xs" c="dimmed">
+            Valores registrados antes de as retenções passarem para as notas de
+            serviço. Não são retenções sofridas e não entram nos totais acima.
+          </Text>
+          <div className={tableClasses.wrapper}>
+            <table className={`${tableClasses.table} ${classes.dense}`}>
+              <thead>
+                <tr>
+                  <th>Documento</th>
+                  <th>Empresa</th>
+                  <th>Fornecedor</th>
+                  <th>Referência</th>
+                  <th className={tableClasses.numeric}>Bruto</th>
+                  <TypeHeaders />
+                  <th className={tableClasses.numeric}>Total retido</th>
+                  <th className={tableClasses.numeric}>Líquido</th>
+                </tr>
+              </thead>
+              <tbody>
+                {bills.map((bill) => (
+                  <tr key={bill.id}>
+                    <td>{bill.documentNumber}</td>
+                    <td>{bill.legalName}</td>
+                    <td>{bill.supplierName}</td>
+                    <td>{formatDate(bill.referenceDate)}</td>
+                    <td className={tableClasses.numeric}>
+                      <MoneyText value={bill.grossAmount} />
+                    </td>
+                    {TAX_TYPES.map((type) => (
+                      <td key={type} className={tableClasses.numeric}>
+                        <Amount value={bill.amountsByType[type]} />
+                      </td>
+                    ))}
+                    <td className={tableClasses.numeric}>
+                      <MoneyText value={bill.withholdingTotal} strong />
+                    </td>
+                    <td className={tableClasses.numeric}>
+                      <MoneyText value={bill.netAmount} />
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className={tableClasses.footer}>
+                  <td colSpan={5}>Total do histórico</td>
+                  <TypeCells byType={totals.byType} />
+                  <td className={tableClasses.numeric}>
+                    <MoneyText value={totals.total} strong />
+                  </td>
+                  <td />
+                </tr>
+              </tfoot>
+            </table>
+          </div>
+        </Stack>
+      </Collapse>
     </div>
   );
 }
 
 export function WithholdingsReportPage() {
   const { filters, periodError } = useReportFilters();
-  const [expanded, setExpanded] = useState(false);
-  const [grouped, setGrouped] = useState(false);
-
   const { data, isLoading, isError, error, isFetching } =
     useWithholdingsReport(filters);
 
-  const handleExport = () => {
-    if (!data) {
-      return;
+  const exportRows = (name: string, rows: CsvCell[][]) => {
+    if (data) {
+      downloadCsv(reportFileName(name, data.from, data.to, data.regime), rows);
     }
-    downloadCsv(
-      reportFileName('retencoes', data.from, data.to, data.regime),
-      buildCsvRows(data),
-    );
   };
+
+  const empty =
+    data && data.invoices.length === 0 && data.legacy.bills.length === 0;
 
   return (
     <Stack gap="md">
       <ReportHeader
-        title="Retenções de impostos"
+        title="Retenções sofridas"
         report={data}
-        onExport={handleExport}
+        onExport={() =>
+          data && exportRows('retencoes-sofridas', invoiceCsvRows(data))
+        }
         exportDisabled={!data}
       />
 
@@ -159,7 +410,7 @@ export function WithholdingsReportPage() {
         </Alert>
       ) : isLoading || !data ? (
         <ReportSkeleton rows={6} />
-      ) : data.companies.length === 0 ? (
+      ) : empty ? (
         <ReportEmptyState
           from={data.from}
           to={data.to}
@@ -167,95 +418,33 @@ export function WithholdingsReportPage() {
           subject="imposto retido"
         />
       ) : (
-        <Stack gap="md">
-          <div className={classes.cards}>
-            {data.companies.map((company) => (
-              <div key={company.companyId} className={classes.card}>
-                <div className={classes.cardTitle}>{company.legalName}</div>
-                <div className={classes.cardMeta}>
-                  <span className="fb-numeric">{formatCnpj(company.cnpj)}</span>
-                  {' · '}
-                  {company.billCount}{' '}
-                  {company.billCount === 1 ? 'conta' : 'contas'}
-                </div>
+        <Stack gap="lg">
+          {data.invoices.length === 0 ? (
+            <Text size="sm" c="dimmed">
+              Nenhuma retenção sofrida em notas de serviço no período.
+            </Text>
+          ) : (
+            <>
+              <SummaryTables report={data} exportRows={exportRows} />
+              <Section
+                title="Notas de serviço com retenção"
+                onExport={() =>
+                  exportRows('retencoes-sofridas', invoiceCsvRows(data))
+                }
+              >
+                <InvoicesTable report={data} />
+              </Section>
+            </>
+          )}
 
-                <div className={classes.cardTotal}>
-                  <Text size="xs" c="dimmed">
-                    Total retido
-                  </Text>
-                  <MoneyText value={company.total} strong withSymbol />
-                </div>
-
-                <div className={classes.breakdown}>
-                  {TAX_TYPES.map((type) => {
-                    const amount = amountOf(company.byType, type);
-                    return (
-                      <div key={type} className={classes.breakdownRow}>
-                        <span>{TAX_TYPE_LABELS[type]}</span>
-                        <span className={amount === ZERO ? classes.zero : ''}>
-                          <MoneyText
-                            value={amount}
-                            tone={amount === ZERO ? 'muted' : 'default'}
-                          />
-                        </span>
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          <Group justify="space-between" align="center" wrap="wrap">
-            <Button
-              variant="subtle"
-              size="xs"
-              color="gray"
-              leftSection={
-                <IconChevronRight
-                  size={15}
-                  style={{
-                    transform: expanded ? 'rotate(90deg)' : 'none',
-                    transition: 'transform 150ms',
-                  }}
-                />
+          {data.legacy.bills.length > 0 && (
+            <LegacyBlock
+              report={data}
+              onExport={() =>
+                exportRows('retencoes-historico', legacyCsvRows(data))
               }
-              onClick={() => setExpanded((previous) => !previous)}
-            >
-              {expanded ? 'Ocultar' : 'Detalhar'} contas com retenção (
-              {data.totals.billCount})
-            </Button>
-
-            {expanded && (
-              <Switch
-                size="xs"
-                label="Agrupar por empresa"
-                checked={grouped}
-                onChange={(event) => setGrouped(event.currentTarget.checked)}
-              />
-            )}
-          </Group>
-
-          <Collapse expanded={expanded}>
-            {grouped ? (
-              <Stack gap="sm">
-                {data.companies.map((company) => (
-                  <div key={company.companyId}>
-                    <div className={classes.groupHeading}>
-                      {company.legalName}
-                    </div>
-                    <BillsTable
-                      bills={data.bills.filter(
-                        (bill) => bill.companyId === company.companyId,
-                      )}
-                    />
-                  </div>
-                ))}
-              </Stack>
-            ) : (
-              <BillsTable bills={data.bills} />
-            )}
-          </Collapse>
+            />
+          )}
 
           {isFetching && (
             <Text size="xs" c="dimmed">

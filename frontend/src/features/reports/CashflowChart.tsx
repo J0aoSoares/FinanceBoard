@@ -6,11 +6,11 @@ import { formatMoney, fromCents, toSignedCents } from '../../lib/money';
 import type { CashflowMonth } from '../../api/types';
 import classes from './CashflowChart.module.css';
 
-export type OutflowMode = 'net' | 'gross';
+export type InflowMode = 'net' | 'gross';
 
 interface CashflowChartProps {
   months: CashflowMonth[];
-  outflowMode: OutflowMode;
+  inflowMode: InflowMode;
 }
 
 const HEIGHT = 320;
@@ -74,16 +74,17 @@ const monthTickLabel = (month: string, everyOther: boolean, index: number) => {
   return shortMonthLabels()[monthNumberOf(month) - 1];
 };
 
-export function CashflowChart({ months, outflowMode }: CashflowChartProps) {
+export function CashflowChart({ months, inflowMode }: CashflowChartProps) {
   const { ref, width } = useElementSize();
   const [hovered, setHovered] = useState<number | null>(null);
 
-  const outflowKey = outflowMode === 'gross' ? 'outflowGross' : 'outflow';
-  const outflowLabel =
-    outflowMode === 'gross' ? 'Saída bruta' : 'Saída líquida';
+  const inflowKey = inflowMode === 'gross' ? 'inflowGross' : 'inflow';
+  const inflowLabel =
+    inflowMode === 'gross' ? 'Faturado bruto' : 'Entrada líquida';
+  const outflowLabel = 'Saídas';
 
-  const inflowValues = months.map((month) => toSignedCents(month.inflow));
-  const outflowValues = months.map((month) => toSignedCents(month[outflowKey]));
+  const inflowValues = months.map((month) => toSignedCents(month[inflowKey]));
+  const outflowValues = months.map((month) => toSignedCents(month.outflow));
   const accumulatedValues = months.map((month) =>
     toSignedCents(month.accumulatedBalance),
   );
@@ -126,7 +127,7 @@ export function CashflowChart({ months, outflowMode }: CashflowChartProps) {
             className={classes.swatch}
             style={{ backgroundColor: 'var(--fb-chart-inflow)' }}
           />
-          Entradas
+          {inflowLabel}
         </span>
         <span className={classes.legendItem}>
           <span
@@ -149,7 +150,7 @@ export function CashflowChart({ months, outflowMode }: CashflowChartProps) {
           className={classes.plot}
           height={HEIGHT}
           role="img"
-          aria-label={`Fluxo de caixa mês a mês: entradas, ${outflowLabel.toLowerCase()} e saldo acumulado`}
+          aria-label={`Fluxo de caixa mês a mês: ${inflowLabel.toLowerCase()}, saídas e saldo acumulado`}
         >
           {scale.ticks.map((tick) => (
             <g key={tick}>
@@ -274,9 +275,9 @@ export function CashflowChart({ months, outflowMode }: CashflowChartProps) {
                 className={classes.swatch}
                 style={{ backgroundColor: 'var(--fb-chart-inflow)' }}
               />
-              Entradas
+              {inflowLabel}
             </span>
-            <MoneyText value={active.inflow} />
+            <MoneyText value={active[inflowKey]} />
           </div>
           <div className={classes.tooltipRow}>
             <span className={classes.tooltipLabel}>
@@ -286,7 +287,7 @@ export function CashflowChart({ months, outflowMode }: CashflowChartProps) {
               />
               {outflowLabel}
             </span>
-            <MoneyText value={active[outflowKey]} />
+            <MoneyText value={active.outflow} />
           </div>
           <div className={classes.tooltipRow}>
             <span className={classes.tooltipLabel}>

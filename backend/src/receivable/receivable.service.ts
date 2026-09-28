@@ -55,7 +55,6 @@ export class ReceivableService {
           clientName: dto.clientName,
           grossAmount,
           netAmount,
-          amount: netAmount,
           competence: this.competenceDate(dto.competence),
           issueDate: new Date(dto.issueDate),
           dueDate: new Date(dto.dueDate),
@@ -235,7 +234,6 @@ export class ReceivableService {
           clientName: dto.clientName,
           grossAmount,
           netAmount,
-          amount: netAmount,
           competence: dto.competence
             ? this.competenceDate(dto.competence)
             : undefined,

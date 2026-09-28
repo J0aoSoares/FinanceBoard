@@ -168,7 +168,6 @@ model Receivable {
   number      String?
   description String
   clientName  String
-  amount      Decimal       @db.Decimal(12, 2)
   grossAmount Decimal       @db.Decimal(12, 2)
   netAmount   Decimal       @db.Decimal(12, 2)
   competence  DateTime

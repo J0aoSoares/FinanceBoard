@@ -8,13 +8,17 @@ import {
   monthRange,
   resolveReportMonths,
 } from '../common/period.util';
+import {
+  receivableEffectiveDate,
+  receivablePeriodWhere,
+} from '../common/receivable-period.util';
 import { ReportPeriodQueryDto } from './dto/report-period-query.dto';
 
 type MonthBucket = {
   inflow: Prisma.Decimal;
+  inflowGross: Prisma.Decimal;
+  inflowWithholdings: Prisma.Decimal;
   outflow: Prisma.Decimal;
-  outflowGross: Prisma.Decimal;
-  withholdings: Prisma.Decimal;
 };
 
 @Injectable()
@@ -40,7 +44,6 @@ export class CashflowService {
         ],
       },
       select: {
-        grossAmount: true,
         netAmount: true,
         issueDate: true,
         paymentDate: true,
@@ -51,37 +54,38 @@ export class CashflowService {
     for (const bill of bills) {
       const date = billEffectiveDate(bill, regime);
       const bucket = date && buckets.get(monthKey(date));
-      if (!bucket) {
-        continue;
+      if (bucket) {
+        bucket.outflow = bucket.outflow.plus(bill.netAmount);
       }
-      bucket.outflow = bucket.outflow.plus(bill.netAmount);
-      bucket.outflowGross = bucket.outflowGross.plus(bill.grossAmount);
-      bucket.withholdings = bucket.withholdings.plus(
-        bill.grossAmount.minus(bill.netAmount),
-      );
     }
 
-    const receivableDateField =
-      regime === CashflowRegime.CASH ? 'receiptDate' : 'issueDate';
     const receivables = await this.prisma.receivable.findMany({
       where: {
-        [receivableDateField]: { gte: start, lt: end },
-        companyId: query.companyId,
-        projectId: query.projectId,
+        AND: [
+          receivablePeriodWhere(start, end, regime),
+          query.companyId ? { companyId: query.companyId } : {},
+          query.projectId ? { projectId: query.projectId } : {},
+        ],
       },
-      select: { amount: true, issueDate: true, receiptDate: true },
+      select: {
+        grossAmount: true,
+        netAmount: true,
+        competence: true,
+        receiptDate: true,
+      },
     });
 
     for (const receivable of receivables) {
-      const date =
-        regime === CashflowRegime.CASH
-          ? receivable.receiptDate
-          : receivable.issueDate;
+      const date = receivableEffectiveDate(receivable, regime);
       const bucket = date && buckets.get(monthKey(date));
       if (!bucket) {
         continue;
       }
-      bucket.inflow = bucket.inflow.plus(receivable.amount);
+      bucket.inflow = bucket.inflow.plus(receivable.netAmount);
+      bucket.inflowGross = bucket.inflowGross.plus(receivable.grossAmount);
+      bucket.inflowWithholdings = bucket.inflowWithholdings.plus(
+        receivable.grossAmount.minus(receivable.netAmount),
+      );
     }
 
     let accumulated = new Prisma.Decimal(0);
@@ -92,9 +96,9 @@ export class CashflowService {
       return {
         month,
         inflow: bucket.inflow.toFixed(2),
+        inflowGross: bucket.inflowGross.toFixed(2),
+        inflowWithholdings: bucket.inflowWithholdings.toFixed(2),
         outflow: bucket.outflow.toFixed(2),
-        outflowGross: bucket.outflowGross.toFixed(2),
-        withholdings: bucket.withholdings.toFixed(2),
         balance: balance.toFixed(2),
         accumulatedBalance: accumulated.toFixed(2),
       };
@@ -104,9 +108,11 @@ export class CashflowService {
       const bucket = buckets.get(month) as MonthBucket;
       return {
         inflow: acc.inflow.plus(bucket.inflow),
+        inflowGross: acc.inflowGross.plus(bucket.inflowGross),
+        inflowWithholdings: acc.inflowWithholdings.plus(
+          bucket.inflowWithholdings,
+        ),
         outflow: acc.outflow.plus(bucket.outflow),
-        outflowGross: acc.outflowGross.plus(bucket.outflowGross),
-        withholdings: acc.withholdings.plus(bucket.withholdings),
       };
     }, this.emptyBucket());
 
@@ -118,9 +124,9 @@ export class CashflowService {
       months: monthlyResults,
       totals: {
         inflow: totals.inflow.toFixed(2),
+        inflowGross: totals.inflowGross.toFixed(2),
+        inflowWithholdings: totals.inflowWithholdings.toFixed(2),
         outflow: totals.outflow.toFixed(2),
-        outflowGross: totals.outflowGross.toFixed(2),
-        withholdings: totals.withholdings.toFixed(2),
         balance: totals.inflow.minus(totals.outflow).toFixed(2),
       },
     };
@@ -129,9 +135,9 @@ export class CashflowService {
   private emptyBucket(): MonthBucket {
     return {
       inflow: new Prisma.Decimal(0),
+      inflowGross: new Prisma.Decimal(0),
+      inflowWithholdings: new Prisma.Decimal(0),
       outflow: new Prisma.Decimal(0),
-      outflowGross: new Prisma.Decimal(0),
-      withholdings: new Prisma.Decimal(0),
     };
   }
 }

@@ -17,10 +17,10 @@ export function CashflowTable({ report }: CashflowTableProps) {
         <thead>
           <tr>
             <th>Mês</th>
-            <th className={classes.numeric}>Entradas</th>
-            <th className={classes.numeric}>Saída bruta</th>
-            <th className={classes.numeric}>Retenções</th>
-            <th className={classes.numeric}>Saída líquida</th>
+            <th className={classes.numeric}>Faturado bruto</th>
+            <th className={classes.numeric}>Retenções sofridas</th>
+            <th className={classes.numeric}>Entradas líquidas</th>
+            <th className={classes.numeric}>Saídas</th>
             <th className={classes.numeric}>Saldo</th>
             <th className={classes.numeric}>Acumulado</th>
           </tr>
@@ -31,13 +31,13 @@ export function CashflowTable({ report }: CashflowTableProps) {
             <tr key={month.month}>
               <td>{formatMonth(month.month)}</td>
               <td className={classes.numeric}>
+                <MoneyText value={month.inflowGross} />
+              </td>
+              <td className={classes.numeric}>
+                <MoneyText value={month.inflowWithholdings} tone="muted" />
+              </td>
+              <td className={classes.numeric}>
                 <MoneyText value={month.inflow} tone="inflow" />
-              </td>
-              <td className={classes.numeric}>
-                <MoneyText value={month.outflowGross} />
-              </td>
-              <td className={classes.numeric}>
-                <MoneyText value={month.withholdings} tone="muted" />
               </td>
               <td className={classes.numeric}>
                 <MoneyText value={month.outflow} tone="outflow" />
@@ -65,17 +65,17 @@ export function CashflowTable({ report }: CashflowTableProps) {
           <tr className={classes.footer}>
             <td>Total do período</td>
             <td className={classes.numeric}>
-              <MoneyText value={report.totals.inflow} tone="inflow" strong />
-            </td>
-            <td className={classes.numeric}>
-              <MoneyText value={report.totals.outflowGross} strong />
+              <MoneyText value={report.totals.inflowGross} strong />
             </td>
             <td className={classes.numeric}>
               <MoneyText
-                value={report.totals.withholdings}
+                value={report.totals.inflowWithholdings}
                 tone="muted"
                 strong
               />
+            </td>
+            <td className={classes.numeric}>
+              <MoneyText value={report.totals.inflow} tone="inflow" strong />
             </td>
             <td className={classes.numeric}>
               <MoneyText value={report.totals.outflow} tone="outflow" strong />

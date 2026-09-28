@@ -1,7 +1,7 @@
 import { request } from '../lib/http';
 import type {
   CashflowReport,
-  ProjectCostReport,
+  ProjectResultReport,
   ReportPeriodFilters,
   WithholdingReport,
 } from './types';
@@ -14,7 +14,7 @@ export const getWithholdingsReport = (filters: ReportPeriodFilters) =>
     params: { ...filters },
   });
 
-export const getProjectCostsReport = (filters: ReportPeriodFilters) =>
-  request<ProjectCostReport>('/reports/project-costs', {
+export const getProjectResultsReport = (filters: ReportPeriodFilters) =>
+  request<ProjectResultReport>('/reports/project-results', {
     params: { ...filters },
   });

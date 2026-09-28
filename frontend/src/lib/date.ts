@@ -34,6 +34,11 @@ export function formatDate(timestamp: string | null | undefined): string {
   return `${day}/${month}/${year}`;
 }
 
+export function formatCompetence(timestamp: string | null | undefined): string {
+  const date = apiDate(timestamp);
+  return date ? `${date.slice(5, 7)}/${date.slice(0, 4)}` : '—';
+}
+
 export function todayIsoDate(): IsoDate {
   return dayjs().format('YYYY-MM-DD');
 }

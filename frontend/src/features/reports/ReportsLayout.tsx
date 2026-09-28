@@ -10,10 +10,14 @@ import classes from './ReportsLayout.module.css';
 
 const reports = [
   { path: '/reports/cashflow', label: 'Fluxo de caixa', icon: IconChartBar },
-  { path: '/reports/withholdings', label: 'Retenções', icon: IconReceiptTax },
   {
-    path: '/reports/project-costs',
-    label: 'Custo por obra',
+    path: '/reports/withholdings',
+    label: 'Retenções sofridas',
+    icon: IconReceiptTax,
+  },
+  {
+    path: '/reports/project-results',
+    label: 'Resultado por obra',
     icon: IconBuildingCommunity,
   },
 ];
