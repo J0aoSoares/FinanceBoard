@@ -215,21 +215,23 @@ describe('Boletos (/bills)', () => {
       expect(await context.prisma.bill.count()).toBe(0);
     });
 
-    it('recusa comprimento e caracteres inválidos', async () => {
-      const short = await server()
-        .post('/bills')
-        .send(billPayload(fixtures, { digitableLine: '12345' }))
-        .expect(400);
-      expect(short.body.message).toBe(
-        'Linha digitável deve ter 47 dígitos (boleto bancário) ou 48 (arrecadação); foram informados 5',
-      );
+    it('aceita número do documento livre, sem exigir 47 dígitos', async () => {
+      for (const reference of ['1909223', `${BANK_SLIP_LINE}-A`]) {
+        const response = await server()
+          .post('/bills')
+          .send(billPayload(fixtures, { digitableLine: ` ${reference} ` }))
+          .expect(201);
+        expect(response.body.digitableLine).toBe(reference);
+      }
+    });
 
-      const letters = await server()
+    it('recusa número do documento com mais de 60 caracteres', async () => {
+      const response = await server()
         .post('/bills')
-        .send(billPayload(fixtures, { digitableLine: `${BANK_SLIP_LINE}-A` }))
+        .send(billPayload(fixtures, { digitableLine: '1'.repeat(61) }))
         .expect(400);
-      expect(letters.body.message).toBe(
-        'Linha digitável deve conter apenas números, espaços e pontos',
+      expect(response.body.message).toBe(
+        'Número do documento deve ter até 60 caracteres',
       );
     });
 
@@ -369,6 +371,24 @@ describe('Boletos (/bills)', () => {
 
       expect(reverted.body.status).toBe('PENDING');
       expect(reverted.body.paymentDate).toBeNull();
+    });
+
+    it('cadastra boleto já pago quando a data de pagamento é enviada', async () => {
+      const created = await server()
+        .post('/bills')
+        .send(billPayload(fixtures, { paymentDate: '2026-07-08' }))
+        .expect(201);
+
+      expect(created.body.status).toBe('PAID');
+      expect(created.body.paymentDate).toContain('2026-07-08');
+
+      const invalid = await server()
+        .post('/bills')
+        .send(billPayload(fixtures, { paymentDate: '08/07/2026' }))
+        .expect(400);
+      expect(invalid.body.message).toContain(
+        'Data de pagamento deve estar no formato aaaa-mm-dd',
+      );
     });
 
     it('recusa pagar boleto já pago', async () => {
@@ -645,14 +665,14 @@ describe('Boletos (/bills)', () => {
                 label: 'B',
                 dueDate: '2026-08-10',
                 amount: '500.00',
-                digitableLine: '123',
+                digitableLine: `${BANK_SLIP_LINE.slice(0, 9)}0${BANK_SLIP_LINE.slice(10)}`,
               },
             ],
           }),
         )
         .expect(400);
       expect(line.body.message).toBe(
-        'Boleto B: Linha digitável deve ter 47 dígitos (boleto bancário) ou 48 (arrecadação); foram informados 3',
+        'Boleto B: Linha digitável inválida: dígito verificador do 1º campo não confere',
       );
       expect(await context.prisma.bill.count()).toBe(0);
     });
@@ -665,6 +685,33 @@ describe('Boletos (/bills)', () => {
 
       expect(await context.prisma.bill.count()).toBe(0);
       expect(await context.prisma.billGroup.count()).toBe(0);
+    });
+
+    it('cadastra boletos já pagos junto com a NF', async () => {
+      const response = await server()
+        .post('/bills/installments')
+        .send(
+          installmentsPayload(fixtures, {
+            installments: [
+              {
+                label: 'A',
+                dueDate: '2026-07-10',
+                amount: '500.00',
+                paymentDate: '2026-07-05',
+              },
+              { label: 'B', dueDate: '2026-08-10', amount: '500.00' },
+            ],
+          }),
+        )
+        .expect(201);
+
+      const [first, second] = response.body;
+      expect(first.status).toBe('PAID');
+      expect(first.effectiveStatus).toBe('PAID');
+      expect(first.paymentDate).toContain('2026-07-05');
+      expect(second.status).toBe('PENDING');
+      expect(second.paymentDate).toBeNull();
+      expect(second.group.paidCount).toBe(1);
     });
 
     it('paga cada boleto individualmente e atualiza o progresso do grupo', async () => {

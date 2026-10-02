@@ -1,6 +1,7 @@
 import {
   ActionIcon,
   Button,
+  Checkbox,
   Collapse,
   Grid,
   Group,
@@ -25,6 +26,7 @@ import {
   LABEL_PATTERN_OPTIONS,
   type LabelPattern,
 } from '../../lib/installment-labels';
+import { todayIsoDate } from '../../lib/date';
 import { compareMoney } from '../../lib/money';
 import {
   MAX_INSTALLMENTS,
@@ -91,6 +93,16 @@ export function InstallmentsEditor({
         ? rows
         : relabelRows(rows, current.labelPattern),
     );
+  };
+
+  const togglePaid = (index: number, paid: boolean) => {
+    form.setFieldValue(`installments.${index}.paid`, paid);
+    if (paid && !form.getValues().installments[index].paymentDate) {
+      form.setFieldValue(`installments.${index}.paymentDate`, todayIsoDate());
+    }
+    if (!paid) {
+      form.clearFieldError(`installments.${index}.paymentDate`);
+    }
   };
 
   const generate = () => {
@@ -215,7 +227,8 @@ export function InstallmentsEditor({
               <th className={classes.label}>Rótulo</th>
               <th className={classes.date}>Vencimento</th>
               <th className={classes.amount}>Valor</th>
-              <th>Linha digitável (opcional)</th>
+              <th>Nº do documento / linha digitável (opcional)</th>
+              {!editing && <th className={classes.payment}>Pago</th>}
               {!editing && <th className={classes.remove} />}
             </tr>
           </thead>
@@ -257,14 +270,38 @@ export function InstallmentsEditor({
                 <td>
                   <TextInput
                     size="xs"
-                    aria-label={`Linha digitável do boleto ${index + 1}`}
-                    placeholder="Cole a linha digitável"
+                    aria-label={`Número do documento do boleto ${index + 1}`}
+                    placeholder="Nº do documento ou linha digitável"
                     classNames={{ input: 'fb-numeric' }}
                     {...form.getInputProps(
                       `installments.${index}.digitableLine`,
                     )}
                   />
                 </td>
+                {!editing && (
+                  <td>
+                    <Group gap="xs" wrap="nowrap" align="flex-start">
+                      <Checkbox
+                        mt={6}
+                        aria-label={`Boleto ${index + 1} já pago`}
+                        checked={row.paid}
+                        onChange={(event) =>
+                          togglePaid(index, event.currentTarget.checked)
+                        }
+                      />
+                      {row.paid && (
+                        <DateField
+                          size="xs"
+                          aria-label={`Data do pagamento do boleto ${index + 1}`}
+                          clearable={false}
+                          {...form.getInputProps(
+                            `installments.${index}.paymentDate`,
+                          )}
+                        />
+                      )}
+                    </Group>
+                  </td>
+                )}
                 {!editing && (
                   <td>
                     <ActionIcon

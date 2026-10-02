@@ -1,6 +1,7 @@
 const ALLOWED_CHARACTERS = /^[\d.\s]+$/;
 const BANK_SLIP_LENGTH = 47;
 const COLLECTION_LENGTH = 48;
+const MAX_REFERENCE_LENGTH = 60;
 const ORDINALS = ['1º', '2º', '3º', '4º'];
 
 export function normalizeDigitableLine(value: string): string {
@@ -115,6 +116,36 @@ export function digitableLineError(value: string): string | null {
     return collectionError(line);
   }
   return `Linha digitável deve ter 47 dígitos (boleto bancário) ou 48 (arrecadação); foram informados ${line.length}`;
+}
+
+function isDigitableLineCandidate(value: string): boolean {
+  if (!ALLOWED_CHARACTERS.test(value)) {
+    return false;
+  }
+  const length = normalizeDigitableLine(value).length;
+  return length === BANK_SLIP_LENGTH || length === COLLECTION_LENGTH;
+}
+
+/**
+ * O campo do boleto aceita o número do documento (texto livre) ou a linha
+ * digitável. Só quando o valor tem o formato de uma linha digitável completa
+ * (47 ou 48 dígitos) os dígitos verificadores são conferidos.
+ */
+export function boletoReferenceError(value: string): string | null {
+  const trimmed = value.trim();
+  if (isDigitableLineCandidate(trimmed)) {
+    return digitableLineError(trimmed);
+  }
+  return trimmed.length > MAX_REFERENCE_LENGTH
+    ? `Número do documento deve ter até ${MAX_REFERENCE_LENGTH} caracteres`
+    : null;
+}
+
+export function normalizeBoletoReference(value: string): string {
+  const trimmed = value.trim();
+  return isDigitableLineCandidate(trimmed)
+    ? normalizeDigitableLine(trimmed)
+    : trimmed;
 }
 
 export function formatDigitableLine(digits: string): string {

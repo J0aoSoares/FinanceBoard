@@ -5,9 +5,9 @@ import type {
 } from '../../api/types';
 import { addMonthsClamped, apiDate, monthlyDueDates } from '../../lib/date.ts';
 import {
-  digitableLineError,
+  boletoReferenceError,
   formatDigitableLine,
-  normalizeDigitableLine,
+  normalizeBoletoReference,
 } from '../../lib/digitable-line.ts';
 import {
   alphaLabel,
@@ -32,6 +32,8 @@ export interface InstallmentRow {
   dueDate: string | null;
   amount: Money;
   digitableLine: string;
+  paid: boolean;
+  paymentDate: string | null;
 }
 
 export interface GeneratorSettings {
@@ -59,6 +61,8 @@ const emptyRow = (label: string): InstallmentRow => ({
   dueDate: null,
   amount: '',
   digitableLine: '',
+  paid: false,
+  paymentDate: null,
 });
 
 export const emptyBillForm = (companyId?: string): BillFormValues => ({
@@ -92,6 +96,8 @@ export const billToFormValues = (bill: Bill): BillFormValues => ({
       digitableLine: bill.digitableLine
         ? formatDigitableLine(bill.digitableLine)
         : '',
+      paid: false,
+      paymentDate: null,
     },
   ],
 });
@@ -133,6 +139,8 @@ export function generateRows(
     dueDate: dueDates[index] ?? previous[index]?.dueDate ?? null,
     amount: amounts[index] ?? previous[index]?.amount ?? '',
     digitableLine: previous[index]?.digitableLine ?? '',
+    paid: previous[index]?.paid ?? false,
+    paymentDate: previous[index]?.paymentDate ?? null,
   }));
 }
 
@@ -252,12 +260,22 @@ export const billFormValidation = {
     },
     amount: positiveAmount,
     digitableLine: (value: string) =>
-      value.trim() === '' ? null : digitableLineError(value),
+      value.trim() === '' ? null : boletoReferenceError(value),
+    paymentDate: (
+      value: string | null,
+      values: BillFormValues,
+      path: string,
+    ) => {
+      const index = Number(path.split('.')[1]);
+      return values.installments[index]?.paid && !value
+        ? 'Informe a data do pagamento'
+        : null;
+    },
   },
 };
 
 const optionalDigitableLine = (value: string) =>
-  value.trim() === '' ? undefined : normalizeDigitableLine(value);
+  value.trim() === '' ? undefined : normalizeBoletoReference(value);
 
 function buildFields(values: BillFormValues) {
   const fields = {
@@ -283,7 +301,13 @@ export function buildInstallmentsPayload(
         amount: row.amount,
       };
       const line = optionalDigitableLine(row.digitableLine);
-      return line ? { ...installment, digitableLine: line } : installment;
+      return {
+        ...installment,
+        ...(line ? { digitableLine: line } : {}),
+        ...(row.paid && row.paymentDate
+          ? { paymentDate: row.paymentDate }
+          : {}),
+      };
     }),
   };
   return hasTotal(values)

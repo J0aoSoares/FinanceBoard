@@ -55,6 +55,10 @@
   background-color: var(--mantine-color-red-light);
 }
 
+.payment {
+  width: 200px;
+}
+
 .remove {
   width: 40px;
 }

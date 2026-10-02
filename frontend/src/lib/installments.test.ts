@@ -2,8 +2,10 @@ import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import { addMonthsClamped, monthlyDueDates } from './date.ts';
 import {
+  boletoReferenceError,
   digitableLineError,
   formatDigitableLine,
+  normalizeBoletoReference,
   normalizeDigitableLine,
 } from './digitable-line.ts';
 import {
@@ -129,6 +131,28 @@ describe('linha digitável', () => {
     assert.equal(
       digitableLineError(`${bankSlip}x`),
       'Linha digitável deve conter apenas números, espaços e pontos',
+    );
+  });
+
+  it('aceita número do documento de qualquer tamanho até 60 caracteres', () => {
+    assert.equal(boletoReferenceError('1909223'), null);
+    assert.equal(boletoReferenceError('DOC-77/A'), null);
+    assert.equal(normalizeBoletoReference(' 1909223 '), '1909223');
+    assert.equal(
+      normalizeBoletoReference(formatDigitableLine(bankSlip)),
+      bankSlip,
+    );
+    assert.equal(
+      boletoReferenceError('x'.repeat(61)),
+      'Número do documento deve ter até 60 caracteres',
+    );
+  });
+
+  it('confere os dígitos quando o valor é uma linha digitável completa', () => {
+    assert.equal(boletoReferenceError(bankSlip), null);
+    assert.equal(
+      boletoReferenceError(`${bankSlip.slice(0, 9)}0${bankSlip.slice(10)}`),
+      'Linha digitável inválida: dígito verificador do 1º campo não confere',
     );
   });
 });

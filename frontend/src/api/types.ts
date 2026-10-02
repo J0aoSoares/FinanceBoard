@@ -88,10 +88,11 @@ export interface CreateBillInput extends BillFieldsInput {
   amount: Money;
   dueDate: string;
   digitableLine?: string;
+  paymentDate?: string;
 }
 
 export type UpdateBillInput = Partial<
-  Omit<CreateBillInput, 'projectId' | 'digitableLine'>
+  Omit<CreateBillInput, 'projectId' | 'digitableLine' | 'paymentDate'>
 > & {
   projectId?: string | null;
   digitableLine?: string | null;
@@ -102,6 +103,7 @@ export interface InstallmentInput {
   dueDate: string;
   amount: Money;
   digitableLine?: string;
+  paymentDate?: string;
 }
 
 export interface CreateInstallmentsInput extends BillFieldsInput {

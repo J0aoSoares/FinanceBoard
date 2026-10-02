@@ -59,6 +59,13 @@ export class CreateBillDto extends BillFieldsDto {
   dueDate!: string;
 
   @IsOptional()
-  @IsString({ message: 'Linha digitável deve ser um texto' })
+  @IsString({ message: 'Número do documento deve ser um texto' })
   digitableLine?: string | null;
+
+  @IsOptional()
+  @IsDateString(
+    {},
+    { message: 'Data de pagamento deve estar no formato aaaa-mm-dd' },
+  )
+  paymentDate?: string;
 }

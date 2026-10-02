@@ -331,11 +331,15 @@ Regras validadas:
 
 Boleto tem um valor só: a API grava `grossAmount = netAmount = amount` e nenhuma retenção. Enviar `grossAmount` ou `withholdings` retorna 400.
 
-`POST /bills` cadastra um boleto isolado, sem grupo, com `documentNumber`, `description`, `issueDate`, `amount`, `dueDate`, `digitableLine` (opcional) e as relações.
+`POST /bills` cadastra um boleto isolado, sem grupo, com `documentNumber`, `description`, `issueDate`, `amount`, `dueDate`, `digitableLine` (opcional), `paymentDate` (opcional) e as relações.
 
-### Linha digitável
+### Número do documento / linha digitável (`digitableLine`)
 
-Opcional. Aceita colagem com espaços e pontos e é gravada só com dígitos. É validada pelo comprimento — 47 dígitos (boleto bancário) ou 48 (arrecadação, começando com 8) — e pelos **dígitos verificadores** de cada campo e do código de barras. Linha inválida retorna 400 com o motivo, por exemplo `"Linha digitável inválida: dígito verificador do 2º campo não confere"`. Para apagar a linha de um boleto, envie `"digitableLine": null` no `PATCH`.
+Opcional, até 60 caracteres. Guarda o **número do documento** do boleto (texto livre, ex.: `"1909223"`) ou a **linha digitável**. Quando o valor tem o formato de uma linha digitável completa — 47 dígitos (boleto bancário) ou 48 (arrecadação, começando com 8), aceitando colagem com espaços e pontos — ele é gravado só com dígitos e validado pelos **dígitos verificadores** de cada campo e do código de barras; linha inválida retorna 400 com o motivo, por exemplo `"Linha digitável inválida: dígito verificador do 2º campo não confere"`. Qualquer outro valor é gravado como foi digitado (sem espaços nas pontas). Para apagar o campo de um boleto, envie `"digitableLine": null` no `PATCH`.
+
+### Boleto já pago no cadastro
+
+`POST /bills` e cada item de `installments` em `POST /bills/installments` aceitam `paymentDate` (opcional, `aaaa-mm-dd`). Com ele, o boleto já nasce `PAID` com essa data de pagamento; sem ele, nasce `PENDING`. No `PATCH` o campo não é aceito — pagamento e estorno continuam em `/bills/:id/payment`.
 
 ### Edição, pagamento e exclusão
 

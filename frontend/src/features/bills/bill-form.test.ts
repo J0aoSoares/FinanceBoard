@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict';
 import { describe, it } from 'node:test';
 import {
+  billFormValidation,
   buildInstallmentsPayload,
   buildUpdatePayload,
   emptyBillForm,
@@ -81,6 +82,8 @@ describe('formulário da NF de boletos', () => {
       dueDate: '2026-02-28',
       amount: '',
       digitableLine: '',
+      paid: false,
+      paymentDate: null,
     });
   });
 
@@ -146,6 +149,70 @@ describe('formulário da NF de boletos', () => {
         { label: '2', dueDate: '2026-03-10', amount: '80.55' },
       ],
     });
+  });
+
+  it('aceita número do documento livre e envia a data só dos boletos pagos', () => {
+    const payload = buildInstallmentsPayload(
+      filled({
+        installments: [
+          {
+            label: '1',
+            dueDate: '2026-02-10',
+            amount: '120.00',
+            digitableLine: ' 1909223 ',
+            paid: true,
+            paymentDate: '2026-02-09',
+          },
+          {
+            label: '2',
+            dueDate: '2026-03-10',
+            amount: '80.55',
+            digitableLine: '',
+            paid: false,
+            paymentDate: '2026-03-01',
+          },
+        ],
+      }),
+    );
+    assert.deepEqual(payload.installments, [
+      {
+        label: '1',
+        dueDate: '2026-02-10',
+        amount: '120.00',
+        digitableLine: '1909223',
+        paymentDate: '2026-02-09',
+      },
+      { label: '2', dueDate: '2026-03-10', amount: '80.55' },
+    ]);
+  });
+
+  it('exige a data do pagamento só quando o boleto está marcado como pago', () => {
+    const validate = billFormValidation.installments.paymentDate;
+    const values = filled({
+      installments: [
+        {
+          label: '1',
+          dueDate: '2026-02-10',
+          amount: '10.00',
+          digitableLine: '',
+          paid: true,
+          paymentDate: null,
+        },
+        {
+          label: '2',
+          dueDate: '2026-03-10',
+          amount: '10.00',
+          digitableLine: '',
+          paid: false,
+          paymentDate: null,
+        },
+      ],
+    });
+    assert.equal(
+      validate(null, values, 'installments.0.paymentDate'),
+      'Informe a data do pagamento',
+    );
+    assert.equal(validate(null, values, 'installments.1.paymentDate'), null);
   });
 
   it('envia o total e a obra quando informados', () => {

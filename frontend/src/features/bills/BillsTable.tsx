@@ -60,14 +60,14 @@ function DigitableLineCopy({ line }: { line: string | null }) {
     <CopyButton value={line} timeout={1500}>
       {({ copied, copy }) => (
         <Tooltip
-          label={copied ? 'Copiada' : formatDigitableLine(line)}
+          label={copied ? 'Copiado' : formatDigitableLine(line)}
           withArrow
           classNames={{ tooltip: 'fb-numeric' }}
         >
           <ActionIcon
             variant="subtle"
             color={copied ? 'teal' : 'gray'}
-            aria-label="Copiar linha digitável"
+            aria-label="Copiar nº do documento / linha digitável"
             onClick={copy}
           >
             {copied ? <IconCheck size={16} /> : <IconCopy size={16} />}
@@ -192,7 +192,7 @@ export function BillsTable({
             <th>Emissão</th>
             <th>Vencimento</th>
             <th className={classes.numeric}>Valor</th>
-            <th className={classes.center}>Linha</th>
+            <th className={classes.center}>Documento</th>
             <th>Situação</th>
             {canWrite && <th />}
           </tr>

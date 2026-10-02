@@ -11,8 +11,8 @@ import {
   billPeriodWhere,
 } from '../common/bill-period.util';
 import {
-  digitableLineError,
-  normalizeDigitableLine,
+  boletoReferenceError,
+  normalizeBoletoReference,
 } from '../common/digitable-line.util';
 import { monthRange, startOfTodayUtc } from '../common/period.util';
 import { CreateBillDto } from './dto/create-bill.dto';
@@ -74,6 +74,7 @@ export class BillService {
           netAmount: amount,
           issueDate: new Date(dto.issueDate),
           dueDate: new Date(dto.dueDate),
+          ...this.paymentFields(dto.paymentDate),
           hasTaxWithholding: false,
           companyId: dto.companyId,
           projectId: dto.projectId ?? null,
@@ -140,6 +141,7 @@ export class BillService {
             netAmount: item.amount,
             issueDate: new Date(dto.issueDate),
             dueDate: new Date(item.dueDate),
+            ...this.paymentFields(item.paymentDate),
             hasTaxWithholding: false,
             companyId: dto.companyId,
             projectId: dto.projectId ?? null,
@@ -434,6 +436,12 @@ export class BillService {
     );
   }
 
+  private paymentFields(paymentDate: string | undefined) {
+    return paymentDate
+      ? { status: PaymentStatus.PAID, paymentDate: new Date(paymentDate) }
+      : {};
+  }
+
   private digitableLineValue(value: string | null | undefined, prefix = '') {
     if (value === undefined) {
       return undefined;
@@ -441,11 +449,11 @@ export class BillService {
     if (value === null || value.trim() === '') {
       return null;
     }
-    const error = digitableLineError(value);
+    const error = boletoReferenceError(value);
     if (error) {
       throw new BadRequestException(`${prefix}${error}`);
     }
-    return normalizeDigitableLine(value);
+    return normalizeBoletoReference(value);
   }
 
   private assertUniqueLabels(labels: string[]) {
