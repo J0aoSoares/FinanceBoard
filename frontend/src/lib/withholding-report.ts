@@ -126,7 +126,7 @@ export function legacyCsvRows(report: WithholdingReport): CsvCell[][] {
       'Líquido',
     ],
     ...bills.map((bill) => [
-      bill.documentNumber,
+      bill.documentNumber ?? '',
       bill.legalName,
       bill.cnpj,
       bill.supplierName,

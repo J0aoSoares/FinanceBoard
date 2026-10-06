@@ -108,14 +108,14 @@ model BillGroup {
 
 model Bill {
   id                String        @id @default(cuid())
-  documentNumber    String
+  documentNumber    String?
   description       String
   digitableLine     String?
   installmentLabel  String?
   installmentNumber Int?
   grossAmount       Decimal       @db.Decimal(12, 2)
   netAmount         Decimal       @db.Decimal(12, 2)
-  issueDate         DateTime
+  issueDate         DateTime?
   dueDate           DateTime
   paymentDate       DateTime?
   status            PaymentStatus @default(PENDING)

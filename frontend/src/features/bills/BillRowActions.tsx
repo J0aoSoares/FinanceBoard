@@ -1,4 +1,4 @@
-import { ActionIcon, Menu, Tooltip } from '@mantine/core';
+import { ActionIcon, Menu } from '@mantine/core';
 import {
   IconArrowBackUp,
   IconCash,
@@ -49,21 +49,9 @@ export function BillRowActions({
 
         <Menu.Divider />
 
-        <Tooltip
-          label="Boleto pago não pode ser editado; estorne antes"
-          disabled={!paid}
-          withArrow
-        >
-          <div>
-            <Menu.Item
-              leftSection={<IconPencil size={15} />}
-              disabled={paid}
-              onClick={onEdit}
-            >
-              Editar
-            </Menu.Item>
-          </div>
-        </Tooltip>
+        <Menu.Item leftSection={<IconPencil size={15} />} onClick={onEdit}>
+          {paid ? 'Completar dados da NF' : 'Editar'}
+        </Menu.Item>
 
         <Menu.Item
           color="red"

@@ -3,6 +3,7 @@ import { describe, it } from 'node:test';
 import {
   billFormValidation,
   buildInstallmentsPayload,
+  buildNfUpdatePayload,
   buildUpdatePayload,
   emptyBillForm,
   generateRows,
@@ -213,6 +214,31 @@ describe('formulário da NF de boletos', () => {
       'Informe a data do pagamento',
     );
     assert.equal(validate(null, values, 'installments.1.paymentDate'), null);
+  });
+
+  it('cadastra boletos sem NF: número e emissão ficam de fora', () => {
+    const values = filled({ documentNumber: '  ', issueDate: null });
+    assert.equal('documentNumber' in billFormValidation, false);
+    const payload = buildInstallmentsPayload(values);
+    assert.equal('documentNumber' in payload, false);
+    assert.equal('issueDate' in payload, false);
+    assert.equal(nfLabel(null), 'Sem NF');
+    assert.equal(nfLabel(' '), 'Sem NF');
+  });
+
+  it('ao editar, NF em branco é enviada como null para limpar', () => {
+    const payload = buildUpdatePayload(
+      filled({ documentNumber: '', issueDate: null }),
+    );
+    assert.equal(payload.documentNumber, null);
+    assert.equal(payload.issueDate, null);
+  });
+
+  it('boleto pago envia só os dados da NF', () => {
+    assert.deepEqual(buildNfUpdatePayload(filled()), {
+      documentNumber: 'NF-555',
+      issueDate: '2026-01-10',
+    });
   });
 
   it('envia o total e a obra quando informados', () => {

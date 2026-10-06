@@ -322,16 +322,16 @@ Todos os boletos são criados **numa única transação**: se um falhar, nenhum 
 
 Regras validadas:
 
-- `documentNumber` (número da NF) e `description` são obrigatórios
+- `description` é obrigatória; `documentNumber` (número da NF) e `issueDate` (emissão) são **opcionais** — o boleto pode chegar antes da nota
 - de 1 a 60 boletos, com rótulos únicos na NF (sem diferenciar maiúsculas)
-- nenhum vencimento anterior à emissão da NF
+- nenhum vencimento anterior à emissão da NF (quando informada)
 - `totalAmount` é **opcional**: se informado, a soma dos boletos precisa ser igual a ele (conferido em `Decimal`); se omitido, a NF vale a soma dos boletos
 - `projectId` é opcional (despesas administrativas não têm obra)
 - empresa, obra, categoria ou fornecedor inexistentes retornam 400 com a mensagem específica
 
 Boleto tem um valor só: a API grava `grossAmount = netAmount = amount` e nenhuma retenção. Enviar `grossAmount` ou `withholdings` retorna 400.
 
-`POST /bills` cadastra um boleto isolado, sem grupo, com `documentNumber`, `description`, `issueDate`, `amount`, `dueDate`, `digitableLine` (opcional), `paymentDate` (opcional) e as relações.
+`POST /bills` cadastra um boleto isolado, sem grupo, com `description`, `amount`, `dueDate`, `digitableLine` (opcional), `paymentDate` (opcional), `documentNumber` e `issueDate` (opcionais) e as relações.
 
 ### Número do documento / linha digitável (`digitableLine`)
 
@@ -343,7 +343,7 @@ Opcional, até 60 caracteres. Guarda o **número do documento** do boleto (texto
 
 ### Edição, pagamento e exclusão
 
-Pagar, estornar e editar são **por boleto**. Boleto pago não pode ser editado; estorne antes com `DELETE /bills/:id/payment`.
+Pagar, estornar e editar são **por boleto**, com uma exceção: `documentNumber` e `issueDate` são dados da NF e, ao editar um boleto de grupo, são gravados em **todos os boletos do grupo** (enviar `null` limpa). Boleto pago só aceita `PATCH` com esses dois campos — é assim que se completa a NF que chegou depois do pagamento; para mudar o resto, estorne antes com `DELETE /bills/:id/payment`.
 
 ```json
 POST /bills/:id/payment
@@ -458,7 +458,7 @@ Período máximo de 36 meses. `from` posterior a `to` retorna 400. A resposta tr
 | Lançamento       | Competência (`accrual`)           | Caixa (`cash`)            |
 |------------------|-----------------------------------|---------------------------|
 | NF de serviço    | mês de **competência** da NF      | data de recebimento       |
-| Boleto           | data de **emissão** da NF         | data de pagamento         |
+| Boleto           | data de **emissão** da NF (sem NF: vencimento) | data de pagamento |
 
 Os testes de `report.e2e-spec.ts` provam, mês a mês e nos dois regimes, que os totais do fluxo de caixa são iguais à soma das listagens de Boletos (`dateBasis=issue` / `payment`) e de Contas a Receber (`dateBasis=competence` / `receipt`).
 

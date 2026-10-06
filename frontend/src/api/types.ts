@@ -47,7 +47,7 @@ export interface BillGroupSummary {
 
 export interface Bill {
   id: string;
-  documentNumber: string;
+  documentNumber: string | null;
   description: string;
   digitableLine: string | null;
   installmentLabel: string | null;
@@ -56,7 +56,7 @@ export interface Bill {
   group: BillGroupSummary | null;
   grossAmount: Money;
   netAmount: Money;
-  issueDate: string;
+  issueDate: string | null;
   dueDate: string;
   paymentDate: string | null;
   status: PaymentStatus;
@@ -75,9 +75,9 @@ export interface Bill {
 }
 
 export interface BillFieldsInput {
-  documentNumber: string;
+  documentNumber?: string;
   description: string;
-  issueDate: string;
+  issueDate?: string;
   companyId: string;
   projectId?: string;
   categoryId: string;
@@ -92,8 +92,17 @@ export interface CreateBillInput extends BillFieldsInput {
 }
 
 export type UpdateBillInput = Partial<
-  Omit<CreateBillInput, 'projectId' | 'digitableLine' | 'paymentDate'>
+  Omit<
+    CreateBillInput,
+    | 'projectId'
+    | 'digitableLine'
+    | 'paymentDate'
+    | 'documentNumber'
+    | 'issueDate'
+  >
 > & {
+  documentNumber?: string | null;
+  issueDate?: string | null;
   projectId?: string | null;
   digitableLine?: string | null;
 };
@@ -333,7 +342,7 @@ export interface WithholdingInvoiceDetail {
 
 export interface LegacyWithholdingBill {
   id: string;
-  documentNumber: string;
+  documentNumber: string | null;
   companyId: string;
   legalName: string;
   cnpj: string;

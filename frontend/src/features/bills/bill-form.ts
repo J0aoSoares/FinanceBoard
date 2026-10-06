@@ -82,7 +82,7 @@ export const emptyBillForm = (companyId?: string): BillFormValues => ({
 export const billToFormValues = (bill: Bill): BillFormValues => ({
   ...emptyBillForm(bill.companyId),
   supplierId: bill.supplierId,
-  documentNumber: bill.documentNumber,
+  documentNumber: bill.documentNumber ?? '',
   description: bill.description,
   categoryId: bill.categoryId,
   projectId: bill.projectId,
@@ -102,8 +102,15 @@ export const billToFormValues = (bill: Bill): BillFormValues => ({
   ],
 });
 
-export const nfLabel = (documentNumber: string) =>
-  /^nf/i.test(documentNumber.trim()) ? documentNumber : `NF ${documentNumber}`;
+export const NO_NF_LABEL = 'Sem NF';
+
+export const nfLabel = (documentNumber: string | null) => {
+  const number = documentNumber?.trim();
+  if (!number) {
+    return NO_NF_LABEL;
+  }
+  return /^nf/i.test(number) ? number : `NF ${number}`;
+};
 
 export const billLabel = (bill: Bill) =>
   bill.installmentLabel && (bill.group?.billCount ?? 1) > 1
@@ -221,11 +228,9 @@ const required = (message: string) => (value: string | null) =>
 
 export const billFormValidation = {
   supplierId: required('Fornecedor é obrigatório'),
-  documentNumber: required('Número da NF é obrigatório'),
   description: required('Descrição é obrigatória'),
   categoryId: required('Categoria é obrigatória'),
   companyId: required('Empresa é obrigatória'),
-  issueDate: required('Data de emissão da NF é obrigatória'),
   totalAmount: (value: string, values: BillFormValues) => {
     if (value.trim() === '') {
       return null;
@@ -277,23 +282,33 @@ export const billFormValidation = {
 const optionalDigitableLine = (value: string) =>
   value.trim() === '' ? undefined : normalizeBoletoReference(value);
 
+// Número e emissão da NF são opcionais: a nota pode chegar depois do boleto.
+function nfFields(values: BillFormValues) {
+  const documentNumber = values.documentNumber.trim();
+  return {
+    documentNumber: documentNumber === '' ? null : documentNumber,
+    issueDate: values.issueDate || null,
+  };
+}
+
 function buildFields(values: BillFormValues) {
-  const fields = {
-    documentNumber: values.documentNumber.trim(),
+  return {
     description: values.description.trim(),
-    issueDate: values.issueDate!,
     companyId: values.companyId!,
     categoryId: values.categoryId!,
     supplierId: values.supplierId!,
   };
-  return values.projectId ? { ...fields, projectId: values.projectId } : fields;
 }
 
 export function buildInstallmentsPayload(
   values: BillFormValues,
 ): CreateInstallmentsInput {
+  const { documentNumber, issueDate } = nfFields(values);
   const payload: CreateInstallmentsInput = {
     ...buildFields(values),
+    ...(documentNumber ? { documentNumber } : {}),
+    ...(issueDate ? { issueDate } : {}),
+    ...(values.projectId ? { projectId: values.projectId } : {}),
     installments: values.installments.map((row) => {
       const installment = {
         label: row.label.trim(),
@@ -319,9 +334,15 @@ export function buildUpdatePayload(values: BillFormValues): UpdateBillInput {
   const [row] = values.installments;
   return {
     ...buildFields(values),
+    ...nfFields(values),
     projectId: values.projectId,
     amount: row.amount,
     dueDate: row.dueDate!,
     digitableLine: optionalDigitableLine(row.digitableLine) ?? null,
   };
+}
+
+// Boleto já pago só aceita completar os dados da NF.
+export function buildNfUpdatePayload(values: BillFormValues): UpdateBillInput {
+  return nfFields(values);
 }

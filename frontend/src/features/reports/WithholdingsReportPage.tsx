@@ -333,7 +333,7 @@ function LegacyBlock({
               <tbody>
                 {bills.map((bill) => (
                   <tr key={bill.id}>
-                    <td>{bill.documentNumber}</td>
+                    <td>{bill.documentNumber ?? '—'}</td>
                     <td>{bill.legalName}</td>
                     <td>{bill.supplierName}</td>
                     <td>{formatDate(bill.referenceDate)}</td>

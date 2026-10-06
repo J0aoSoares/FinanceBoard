@@ -194,6 +194,7 @@ export class WithholdingService {
         grossAmount: true,
         netAmount: true,
         issueDate: true,
+        dueDate: true,
         paymentDate: true,
         company: { select: { id: true, legalName: true, cnpj: true } },
         supplier: { select: { name: true } },

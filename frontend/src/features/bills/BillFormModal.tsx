@@ -23,6 +23,7 @@ import {
   billLabel,
   billToFormValues,
   buildInstallmentsPayload,
+  buildNfUpdatePayload,
   buildUpdatePayload,
   emptyBillForm,
   hasLegacyWithholdings,
@@ -56,6 +57,9 @@ export function BillFormModal({
   const values = form.getValues();
   const isEditing = bill !== null;
   const legacy = hasLegacyWithholdings(bill);
+  // Boleto pago: só dá para completar os dados da NF que chegou depois.
+  const nfOnly = isEditing && bill.status === 'PAID';
+  const grouped = isEditing && (bill.group?.billCount ?? 1) > 1;
   const pending = createInstallments.isPending || updateBill.isPending;
   const count = values.installments.length;
 
@@ -64,7 +68,12 @@ export function BillFormModal({
 
     if (isEditing) {
       updateBill.mutate(
-        { id: bill.id, input: buildUpdatePayload(submitted) },
+        {
+          id: bill.id,
+          input: nfOnly
+            ? buildNfUpdatePayload(submitted)
+            : buildUpdatePayload(submitted),
+        },
         { onSuccess },
       );
     } else {
@@ -84,14 +93,25 @@ export function BillFormModal({
     >
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="md">
-          {isEditing && (bill.group?.billCount ?? 1) > 1 && (
+          {grouped && (
             <Alert
               color="blue"
               variant="light"
               icon={<IconInfoCircle size={18} />}
             >
               Este boleto faz parte de uma NF com {bill.group?.billCount}{' '}
-              boletos. As alterações valem só para ele.
+              boletos. Número e emissão da NF valem para todos eles; as demais
+              alterações valem só para este boleto.
+            </Alert>
+          )}
+          {nfOnly && (
+            <Alert
+              color="blue"
+              variant="light"
+              icon={<IconInfoCircle size={18} />}
+            >
+              Boleto já pago: só os dados da NF podem ser completados. Para
+              mudar o restante, estorne o pagamento antes.
             </Alert>
           )}
           {legacy && (
@@ -108,6 +128,7 @@ export function BillFormModal({
           <Grid gap="sm">
             <Grid.Col span={{ base: 12, sm: 6 }}>
               <SupplierSelect
+                disabled={nfOnly}
                 creatable
                 placeholder="Digite ou selecione o fornecedor"
                 withAsterisk
@@ -117,6 +138,7 @@ export function BillFormModal({
             </Grid.Col>
             <Grid.Col span={{ base: 12, sm: 6 }}>
               <CompanySelect
+                disabled={nfOnly}
                 placeholder="Selecione a empresa"
                 withAsterisk
                 clearable={false}
@@ -127,15 +149,15 @@ export function BillFormModal({
             <Grid.Col span={{ base: 12, sm: 4 }}>
               <TextInput
                 label="Número da NF"
+                description="Opcional — preencha quando a nota chegar"
                 placeholder="NF-1088"
-                withAsterisk
                 {...form.getInputProps('documentNumber')}
               />
             </Grid.Col>
             <Grid.Col span={{ base: 12, sm: 4 }}>
               <DateField
                 label="Emissão da NF"
-                withAsterisk
+                description="Opcional"
                 {...form.getInputProps('issueDate')}
               />
             </Grid.Col>
@@ -151,6 +173,7 @@ export function BillFormModal({
 
             <Grid.Col span={12}>
               <TextInput
+                disabled={nfOnly}
                 label="Descrição"
                 placeholder="Ex.: Diesel S10 - frota"
                 withAsterisk
@@ -160,6 +183,7 @@ export function BillFormModal({
 
             <Grid.Col span={{ base: 12, sm: 6 }}>
               <CategorySelect
+                disabled={nfOnly}
                 creatable
                 placeholder="Digite ou selecione a categoria"
                 withAsterisk
@@ -169,6 +193,7 @@ export function BillFormModal({
             </Grid.Col>
             <Grid.Col span={{ base: 12, sm: 6 }}>
               <ProjectSelect
+                disabled={nfOnly}
                 description="Vazio = despesa administrativa"
                 activeOnly
                 {...form.getInputProps('projectId')}
@@ -176,13 +201,17 @@ export function BillFormModal({
             </Grid.Col>
           </Grid>
 
-          <Divider />
+          {!nfOnly && (
+            <>
+              <Divider />
 
-          <InstallmentsEditor
-            form={form}
-            editing={isEditing}
-            amountLocked={legacy}
-          />
+              <InstallmentsEditor
+                form={form}
+                editing={isEditing}
+                amountLocked={legacy}
+              />
+            </>
+          )}
 
           <Group justify="flex-end" gap="xs">
             <Button variant="default" onClick={onClose} disabled={pending}>

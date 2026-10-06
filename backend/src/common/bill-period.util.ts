@@ -5,7 +5,8 @@ import {
 } from '../bill/dto/list-bills-query.dto';
 
 type BillPeriodSource = {
-  issueDate: Date;
+  issueDate: Date | null;
+  dueDate: Date;
   paymentDate: Date | null;
   invoice: { dueDate: Date; paymentDate: Date | null } | null;
 };
@@ -26,9 +27,11 @@ export function billPeriodWhere(
     };
   }
 
+  // Competência: emissão da NF; sem NF ainda, vale o vencimento do boleto.
   return {
     OR: [
       { invoiceId: null, issueDate: range },
+      { invoiceId: null, issueDate: null, dueDate: range },
       { invoice: { dueDate: range } },
     ],
   };
@@ -42,7 +45,9 @@ export function billDateBasisWhere(
   const range = { gte: start, lt: end };
 
   if (basis === BillDateBasis.ISSUE) {
-    return { issueDate: range };
+    return {
+      OR: [{ issueDate: range }, { issueDate: null, dueDate: range }],
+    };
   }
   if (basis === BillDateBasis.PAYMENT) {
     return billPeriodWhere(start, end, CashflowRegime.CASH);
@@ -59,5 +64,5 @@ export function billEffectiveDate(
   if (regime === CashflowRegime.CASH) {
     return bill.invoice ? bill.invoice.paymentDate : bill.paymentDate;
   }
-  return bill.invoice ? bill.invoice.dueDate : bill.issueDate;
+  return bill.invoice ? bill.invoice.dueDate : (bill.issueDate ?? bill.dueDate);
 }

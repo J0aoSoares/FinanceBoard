@@ -417,20 +417,33 @@ describe('Boletos (/bills)', () => {
       );
     });
 
-    it('recusa editar boleto já pago', async () => {
-      const created = await server().post('/bills').send(billPayload(fixtures));
-      await server()
-        .post(`/bills/${created.body.id}/payment`)
-        .send({ paymentDate: '2026-07-08' });
+    it('em boleto pago, só aceita completar os dados da NF', async () => {
+      const created = await server()
+        .post('/bills')
+        .send(
+          billPayload(fixtures, {
+            documentNumber: undefined,
+            issueDate: undefined,
+            paymentDate: '2026-07-08',
+          }),
+        )
+        .expect(201);
 
       const response = await server()
         .patch(`/bills/${created.body.id}`)
         .send({ description: 'Editada' })
         .expect(409);
-
       expect(response.body.message).toBe(
-        'Não é possível editar um boleto já pago; estorne o pagamento antes',
+        'Boleto já pago: só os dados da NF podem ser alterados; estorne o pagamento para mudar o restante',
       );
+
+      const completed = await server()
+        .patch(`/bills/${created.body.id}`)
+        .send({ documentNumber: 'NF-900', issueDate: '2026-07-01' })
+        .expect(200);
+      expect(completed.body.documentNumber).toBe('NF-900');
+      expect(completed.body.issueDate).toContain('2026-07-01');
+      expect(completed.body.status).toBe('PAID');
     });
   });
 
@@ -542,17 +555,54 @@ describe('Boletos (/bills)', () => {
       expect(response.body[0].group.totalAmount).toBe('200.55');
     });
 
-    it('exige o número da NF e guarda o mesmo número em todos os boletos', async () => {
-      const missing = await server()
+    it('cadastra boletos sem NF e completa a NF depois em todos os boletos', async () => {
+      const withoutNf = await server()
         .post('/bills/installments')
-        .send(installmentsPayload(fixtures, { documentNumber: '  ' }))
-        .expect(400);
-      expect(missing.body.message).toContain('Número da NF é obrigatório');
+        .send(
+          installmentsPayload(fixtures, {
+            documentNumber: '  ',
+            issueDate: undefined,
+          }),
+        )
+        .expect(201);
+      for (const bill of withoutNf.body) {
+        expect(bill.documentNumber).toBeNull();
+        expect(bill.issueDate).toBeNull();
+      }
+
+      const single = await server()
+        .post('/bills')
+        .send(
+          billPayload(fixtures, { documentNumber: undefined, issueDate: null }),
+        )
+        .expect(201);
+      expect(single.body.documentNumber).toBeNull();
 
       await server()
-        .post('/bills')
-        .send(billPayload(fixtures, { documentNumber: undefined }))
+        .patch(`/bills/${withoutNf.body[1].id}`)
+        .send({ documentNumber: 'NF-777', issueDate: '2026-06-20' })
+        .expect(200);
+      const group = await context.prisma.bill.findMany({
+        where: { groupId: withoutNf.body[0].group.id },
+      });
+      expect(group.map((bill) => bill.documentNumber)).toEqual([
+        'NF-777',
+        'NF-777',
+        'NF-777',
+      ]);
+      expect(
+        group.every((bill) =>
+          bill.issueDate?.toISOString().startsWith('2026-06-20'),
+        ),
+      ).toBe(true);
+
+      const late = await server()
+        .patch(`/bills/${withoutNf.body[2].id}`)
+        .send({ issueDate: '2026-08-01' })
         .expect(400);
+      expect(late.body.message).toBe(
+        'Boleto A: vencimento não pode ser anterior à emissão da NF',
+      );
 
       const created = await server()
         .post('/bills/installments')
@@ -857,6 +907,25 @@ describe('Boletos (/bills)', () => {
         .expect(200);
 
       expect(descriptions(response.body)).toEqual(['JUNHO']);
+    });
+
+    it('sem NF, a competência usa o vencimento do boleto', async () => {
+      await server()
+        .post('/bills')
+        .send(
+          billPayload(fixtures, {
+            description: 'SEM NF',
+            documentNumber: undefined,
+            issueDate: undefined,
+            dueDate: '2026-06-25',
+          }),
+        )
+        .expect(201);
+
+      const response = await server()
+        .get('/bills?month=2026-06&regime=accrual')
+        .expect(200);
+      expect(descriptions(response.body)).toEqual(['JUNHO', 'SEM NF']);
     });
 
     it('filtra por mês em caixa usando o pagamento', async () => {

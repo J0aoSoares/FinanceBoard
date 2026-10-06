@@ -10,24 +10,35 @@ import {
 export const trimmed = ({ value }: { value: unknown }) =>
   typeof value === 'string' ? value.trim() : value;
 
+const blankToNull = ({ value }: { value: unknown }) => {
+  if (typeof value !== 'string') {
+    return value;
+  }
+  const text = value.trim();
+  return text === '' ? null : text;
+};
+
 export const MONEY_PATTERN = /^\d+(\.\d{1,2})?$/;
 
 export class BillFieldsDto {
-  @Transform(trimmed)
+  // A NF pode chegar depois do boleto: número e emissão são opcionais.
+  @Transform(blankToNull)
+  @IsOptional()
   @IsString({ message: 'Número da NF deve ser um texto' })
-  @IsNotEmpty({ message: 'Número da NF é obrigatório' })
-  documentNumber!: string;
+  documentNumber?: string | null;
 
   @Transform(trimmed)
   @IsString({ message: 'Descrição deve ser um texto' })
   @IsNotEmpty({ message: 'Descrição é obrigatória' })
   description!: string;
 
+  @Transform(blankToNull)
+  @IsOptional()
   @IsDateString(
     {},
     { message: 'Data de emissão da NF deve estar no formato aaaa-mm-dd' },
   )
-  issueDate!: string;
+  issueDate?: string | null;
 
   @IsString({ message: 'Empresa deve ser um identificador válido' })
   @IsNotEmpty({ message: 'Empresa é obrigatória' })

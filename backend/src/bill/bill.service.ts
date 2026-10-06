@@ -61,18 +61,18 @@ export class BillService {
       dto.amount,
       'Valor deve ser maior que zero',
     );
-    this.assertDateOrder(dto.issueDate, dto.dueDate);
+    this.assertDateOrder(dto.issueDate ?? null, dto.dueDate);
     const digitableLine = this.digitableLineValue(dto.digitableLine) ?? null;
 
     try {
       const bill = await this.prisma.bill.create({
         data: {
-          documentNumber: dto.documentNumber,
+          documentNumber: dto.documentNumber ?? null,
           description: dto.description,
           digitableLine,
           grossAmount: amount,
           netAmount: amount,
-          issueDate: new Date(dto.issueDate),
+          issueDate: this.optionalDate(dto.issueDate),
           dueDate: new Date(dto.dueDate),
           ...this.paymentFields(dto.paymentDate),
           hasTaxWithholding: false,
@@ -105,7 +105,7 @@ export class BillService {
         item.amount,
         `${prefix}valor deve ser maior que zero`,
       );
-      if (new Date(item.dueDate) < new Date(dto.issueDate)) {
+      if (dto.issueDate && new Date(item.dueDate) < new Date(dto.issueDate)) {
         throw new BadRequestException(
           `${prefix}vencimento não pode ser anterior à emissão da NF`,
         );
@@ -132,14 +132,14 @@ export class BillService {
         const group = await tx.billGroup.create({ data: {} });
         await tx.bill.createMany({
           data: installments.map((item, index) => ({
-            documentNumber: dto.documentNumber,
+            documentNumber: dto.documentNumber ?? null,
             description: dto.description,
             digitableLine: item.digitableLine ?? null,
             installmentLabel: item.label,
             installmentNumber: index + 1,
             grossAmount: item.amount,
             netAmount: item.amount,
-            issueDate: new Date(dto.issueDate),
+            issueDate: this.optionalDate(dto.issueDate),
             dueDate: new Date(item.dueDate),
             ...this.paymentFields(item.paymentDate),
             hasTaxWithholding: false,
@@ -251,9 +251,9 @@ export class BillService {
     if (!existing) {
       throw new NotFoundException('Boleto não encontrado');
     }
-    if (existing.status === PaymentStatus.PAID) {
+    if (existing.status === PaymentStatus.PAID && this.changesBeyondNf(dto)) {
       throw new ConflictException(
-        'Não é possível editar um boleto já pago; estorne o pagamento antes',
+        'Boleto já pago: só os dados da NF podem ser alterados; estorne o pagamento para mudar o restante',
       );
     }
     if (
@@ -282,32 +282,79 @@ export class BillService {
         ? { grossAmount: amount, netAmount: amount }
         : {};
 
-    this.assertDateOrder(
-      dto.issueDate ?? existing.issueDate,
-      dto.dueDate ?? existing.dueDate,
-    );
+    const nfChanges = {
+      documentNumber: dto.documentNumber,
+      issueDate:
+        dto.issueDate === undefined
+          ? undefined
+          : this.optionalDate(dto.issueDate),
+    };
+    const issueDate =
+      nfChanges.issueDate === undefined
+        ? existing.issueDate
+        : nfChanges.issueDate;
+    this.assertDateOrder(issueDate, dto.dueDate ?? existing.dueDate);
+
+    // Número e emissão são da NF: valem para todos os boletos do grupo.
+    const siblings = existing.groupId
+      ? await this.prisma.bill.findMany({
+          where: { groupId: existing.groupId, id: { not: id } },
+          select: { installmentLabel: true, dueDate: true },
+        })
+      : [];
+    if (nfChanges.issueDate !== undefined) {
+      for (const sibling of siblings) {
+        this.assertDateOrder(
+          issueDate,
+          sibling.dueDate,
+          `Boleto ${sibling.installmentLabel}: `,
+        );
+      }
+    }
+    const propagateNf =
+      siblings.length > 0 &&
+      (nfChanges.documentNumber !== undefined ||
+        nfChanges.issueDate !== undefined);
 
     try {
-      const bill = await this.prisma.bill.update({
-        where: { id },
-        data: {
-          ...amountChanges,
-          description: dto.description,
-          documentNumber: dto.documentNumber,
-          digitableLine: this.digitableLineValue(dto.digitableLine),
-          issueDate: dto.issueDate ? new Date(dto.issueDate) : undefined,
-          dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
-          companyId: dto.companyId,
-          projectId: dto.projectId,
-          categoryId: dto.categoryId,
-          supplierId: dto.supplierId,
-        },
-        include: billInclude,
+      const bill = await this.prisma.$transaction(async (tx) => {
+        if (propagateNf) {
+          await tx.bill.updateMany({
+            where: { groupId: existing.groupId, id: { not: id } },
+            data: nfChanges,
+          });
+        }
+        return tx.bill.update({
+          where: { id },
+          data: {
+            ...amountChanges,
+            ...nfChanges,
+            description: dto.description,
+            digitableLine: this.digitableLineValue(dto.digitableLine),
+            dueDate: dto.dueDate ? new Date(dto.dueDate) : undefined,
+            companyId: dto.companyId,
+            projectId: dto.projectId,
+            categoryId: dto.categoryId,
+            supplierId: dto.supplierId,
+          },
+          include: billInclude,
+        });
       });
       return this.toResponse(bill);
     } catch (error) {
       throw this.translateWriteError(error);
     }
+  }
+
+  private changesBeyondNf(dto: UpdateBillDto) {
+    return Object.entries(dto).some(
+      ([key, value]) =>
+        value !== undefined && key !== 'documentNumber' && key !== 'issueDate',
+    );
+  }
+
+  private optionalDate(value: string | null | undefined) {
+    return value ? new Date(value) : null;
   }
 
   async registerPayment(id: string, dto: PayBillDto) {
@@ -477,10 +524,16 @@ export class BillService {
     return decimal;
   }
 
-  private assertDateOrder(issueDate: string | Date, dueDate: string | Date) {
-    if (new Date(dueDate) < new Date(issueDate)) {
+  private assertDateOrder(
+    issueDate: string | Date | null,
+    dueDate: string | Date,
+    prefix = '',
+  ) {
+    if (issueDate && new Date(dueDate) < new Date(issueDate)) {
       throw new BadRequestException(
-        'Data de vencimento não pode ser anterior à emissão da NF',
+        prefix
+          ? `${prefix}vencimento não pode ser anterior à emissão da NF`
+          : 'Data de vencimento não pode ser anterior à emissão da NF',
       );
     }
   }

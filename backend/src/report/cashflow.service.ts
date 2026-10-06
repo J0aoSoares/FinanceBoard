@@ -46,6 +46,7 @@ export class CashflowService {
       select: {
         netAmount: true,
         issueDate: true,
+        dueDate: true,
         paymentDate: true,
         invoice: { select: { dueDate: true, paymentDate: true } },
       },
