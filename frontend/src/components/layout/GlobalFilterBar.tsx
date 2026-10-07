@@ -8,6 +8,7 @@ export function GlobalFilterBar() {
   const { global, setFilter } = useGlobalFilters();
   const onBills = useMatch('/bills') !== null;
   const onReceivables = useMatch('/receivables') !== null;
+  const onProjectBillings = useMatch('/project-billings') !== null;
 
   return (
     <Group gap="sm" wrap="nowrap">
@@ -18,7 +19,7 @@ export function GlobalFilterBar() {
         value={global.companyId ?? null}
         onChange={(value) => setFilter('companyId', value)}
       />
-      {!onBills && !onReceivables && (
+      {!onBills && !onReceivables && !onProjectBillings && (
         <RegimeToggle
           value={global.regime}
           onChange={(value) => setFilter('regime', value)}

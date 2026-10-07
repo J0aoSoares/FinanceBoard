@@ -38,6 +38,7 @@ const buildCsvRows = (report: ProjectResultReport) => {
     'A receber',
     'Custo',
     'Resultado',
+    'Caução a receber',
   ];
   const categoryRows = (name: string, cost: ProjectCost) =>
     cost.byCategory.map((category) => [
@@ -50,6 +51,7 @@ const buildCsvRows = (report: ProjectResultReport) => {
       '',
       '',
       csvMoney(category.total),
+      '',
       '',
     ]);
 
@@ -67,6 +69,7 @@ const buildCsvRows = (report: ProjectResultReport) => {
         csvMoney(project.outstanding),
         csvMoney(project.cost.total),
         csvMoney(project.result),
+        csvMoney(project.retainage.balance),
       ],
       ...categoryRows(project.name, project.cost),
     ]),
@@ -83,6 +86,7 @@ const buildCsvRows = (report: ProjectResultReport) => {
             csvMoney(report.unassignedRevenue.outstanding),
             '',
             '',
+            '',
           ],
         ]
       : []),
@@ -97,6 +101,7 @@ const buildCsvRows = (report: ProjectResultReport) => {
       '',
       csvMoney(report.administrative.total),
       '',
+      '',
     ],
     ...categoryRows('Despesas administrativas', report.administrative),
     [
@@ -110,6 +115,7 @@ const buildCsvRows = (report: ProjectResultReport) => {
       csvMoney(report.totals.outstanding),
       csvMoney(report.totals.cost),
       csvMoney(report.totals.result),
+      csvMoney(report.retainageTotals.balance),
     ],
   ];
 };
@@ -250,6 +256,13 @@ export function ProjectResultsReportPage() {
               hint={
                 <>
                   A receber <MoneyText value={data.totals.outstanding} />
+                  {data.retainageTotals.balance !== ZERO && (
+                    <>
+                      {' '}
+                      · caução ainda não devolvida{' '}
+                      <MoneyText value={data.retainageTotals.balance} />
+                    </>
+                  )}
                 </>
               }
             >
@@ -349,6 +362,12 @@ export function ProjectResultsReportPage() {
                         </td>
                         <td className={tableClasses.numeric}>
                           <MoneyText value={project.outstanding} tone="muted" />
+                          {project.retainage.balance !== ZERO && (
+                            <span className={tableClasses.secondary}>
+                              caução{' '}
+                              <MoneyText value={project.retainage.balance} />
+                            </span>
+                          )}
                         </td>
                         <td className={tableClasses.numeric}>
                           <MoneyText

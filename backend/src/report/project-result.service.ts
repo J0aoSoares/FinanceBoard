@@ -8,6 +8,10 @@ import {
   receivablePeriodWhere,
   receivedWithinWhere,
 } from '../common/receivable-period.util';
+import {
+  projectBillingPeriodWhere,
+  retainageReleaseWithinWhere,
+} from '../common/project-billing-period.util';
 import { ReportPeriodQueryDto } from './dto/report-period-query.dto';
 
 const zero = () => new Prisma.Decimal(0);
@@ -28,6 +32,12 @@ type Cost = {
   >;
 };
 
+type Retainage = {
+  withheld: Prisma.Decimal;
+  released: Prisma.Decimal;
+  balance: Prisma.Decimal;
+};
+
 type Entry = {
   projectId: string | null;
   name: string;
@@ -36,6 +46,7 @@ type Entry = {
   revenue: Revenue;
   received: Prisma.Decimal;
   cost: Cost;
+  retainage: Retainage;
 };
 
 type ProjectInfo = {
@@ -63,6 +74,18 @@ const serializeRevenue = (revenue: Revenue) => ({
   grossAmount: revenue.gross.toFixed(2),
   withholdingTotal: revenue.gross.minus(revenue.net).toFixed(2),
   netAmount: revenue.net.toFixed(2),
+});
+
+const emptyRetainage = (): Retainage => ({
+  withheld: zero(),
+  released: zero(),
+  balance: zero(),
+});
+
+const serializeRetainage = (retainage: Retainage) => ({
+  withheld: retainage.withheld.toFixed(2),
+  released: retainage.released.toFixed(2),
+  balance: retainage.balance.toFixed(2),
 });
 
 const serializeCost = (cost: Cost) => ({
@@ -131,6 +154,55 @@ export class ProjectResultService {
       }),
     ]);
 
+    const billingScope: Prisma.ProjectBillingWhereInput[] = [
+      query.companyId ? { companyId: query.companyId } : {},
+      query.projectId ? { projectId: query.projectId } : {},
+    ];
+    const releaseScope: Prisma.RetainageReleaseWhereInput[] = [
+      query.companyId ? { companyId: query.companyId } : {},
+      query.projectId ? { projectId: query.projectId } : {},
+    ];
+    const [
+      billingsIssued,
+      billingsPaid,
+      releasesInPeriod,
+      billingsUntilEnd,
+      releasesUntilEnd,
+    ] = await Promise.all([
+      this.prisma.projectBilling.findMany({
+        where: {
+          AND: [projectBillingPeriodWhere(start, end, regime), ...billingScope],
+        },
+        select: {
+          amount: true,
+          retainageAmount: true,
+          netAmount: true,
+          paymentDate: true,
+          project,
+        },
+      }),
+      this.prisma.projectBilling.findMany({
+        where: {
+          AND: [{ paymentDate: { gte: start, lt: end } }, ...billingScope],
+        },
+        select: { netAmount: true, project },
+      }),
+      this.prisma.retainageRelease.findMany({
+        where: {
+          AND: [retainageReleaseWithinWhere(start, end), ...releaseScope],
+        },
+        select: { amount: true, project },
+      }),
+      this.prisma.projectBilling.findMany({
+        where: { AND: [{ dueDate: { lt: end } }, ...billingScope] },
+        select: { retainageAmount: true, project },
+      }),
+      this.prisma.retainageRelease.findMany({
+        where: { AND: [{ returnDate: { lt: end } }, ...releaseScope] },
+        select: { amount: true, project },
+      }),
+    ]);
+
     const projects = new Map<string, Entry>();
     const unassigned: Entry = this.newEntry(null);
     const administrative = emptyCost();
@@ -156,6 +228,47 @@ export class ProjectResultService {
       const entry = entryFor(invoice.project);
       entry.received = entry.received.plus(invoice.netAmount);
     }
+    for (const billing of billingsIssued) {
+      const entry = entryFor(billing.project);
+      entry.revenue.invoiceCount += 1;
+      entry.revenue.gross = entry.revenue.gross.plus(billing.amount);
+      entry.revenue.net = entry.revenue.net.plus(billing.amount);
+      if (!billing.paymentDate) {
+        entry.revenue.outstanding = entry.revenue.outstanding.plus(
+          billing.netAmount,
+        );
+      }
+      entry.retainage.withheld = entry.retainage.withheld.plus(
+        billing.retainageAmount,
+      );
+    }
+    for (const billing of billingsPaid) {
+      const entry = entryFor(billing.project);
+      entry.received = entry.received.plus(billing.netAmount);
+    }
+    for (const release of releasesInPeriod) {
+      const entry = entryFor(release.project);
+      entry.received = entry.received.plus(release.amount);
+      entry.retainage.released = entry.retainage.released.plus(release.amount);
+    }
+    for (const billing of billingsUntilEnd) {
+      const { retainage } = entryFor(billing.project);
+      retainage.balance = retainage.balance.plus(billing.retainageAmount);
+    }
+    for (const release of releasesUntilEnd) {
+      const { retainage } = entryFor(release.project);
+      retainage.balance = retainage.balance.minus(release.amount);
+    }
+    for (const entry of projects.values()) {
+      const hasActivity =
+        entry.revenue.invoiceCount > 0 ||
+        !entry.received.isZero() ||
+        entry.cost.billCount > 0;
+      if (!hasActivity && entry.retainage.balance.isZero()) {
+        projects.delete(entry.projectId as string);
+      }
+    }
+
     for (const bill of bills) {
       const cost = bill.project ? entryFor(bill.project).cost : administrative;
       cost.billCount += 1;
@@ -180,6 +293,7 @@ export class ProjectResultService {
       outstanding: entry.revenue.outstanding.toFixed(2),
       cost: serializeCost(entry.cost),
       result: entry.received.minus(entry.cost.total).toFixed(2),
+      retainage: serializeRetainage(entry.retainage),
     });
 
     const all = [...projects.values(), unassigned];
@@ -224,6 +338,14 @@ export class ProjectResultService {
             outstanding: unassigned.revenue.outstanding.toFixed(2),
           }
         : null,
+      retainageTotals: serializeRetainage(
+        [...projects.values()].reduce((acc, entry) => {
+          acc.withheld = acc.withheld.plus(entry.retainage.withheld);
+          acc.released = acc.released.plus(entry.retainage.released);
+          acc.balance = acc.balance.plus(entry.retainage.balance);
+          return acc;
+        }, emptyRetainage()),
+      ),
       totals: {
         revenue: serializeRevenue(revenueTotal),
         received: receivedTotal.toFixed(2),
@@ -245,6 +367,7 @@ export class ProjectResultService {
       revenue: emptyRevenue(),
       received: zero(),
       cost: emptyCost(),
+      retainage: emptyRetainage(),
     };
   }
 }

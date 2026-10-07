@@ -14,6 +14,10 @@ import {
 import { PROJECT_STATUS_LABELS } from '../../api/types';
 import { ReceivablesTable } from '../receivables/ReceivablesTable';
 import { useReceivableDialogs } from '../receivables/use-receivable-dialogs';
+import { useProjectBillings } from '../../hooks/use-project-billings';
+import { ProjectBillingsTable } from '../project-billings/ProjectBillingsTable';
+import { useProjectBillingDialogs } from '../project-billings/use-project-billing-dialogs';
+import { RetainageSection } from './RetainageSection';
 import classes from './ProjectDetailPage.module.css';
 
 function Card({
@@ -46,6 +50,12 @@ export function ProjectDetailPage() {
     defaultProjectId: id,
   });
 
+  const billings = useProjectBillings({ projectId: id });
+  const billingDialogs = useProjectBillingDialogs({
+    defaultCompanyId: global.companyId,
+    defaultProjectId: id,
+  });
+
   const project = projects.data?.find((item) => item.id === id);
 
   return (
@@ -62,9 +72,18 @@ export function ProjectDetailPage() {
           Voltar às obras
         </Button>
         {canWrite && project && (
-          <Button leftSection={<IconPlus size={16} />} onClick={openNew}>
-            Nova NF de serviço
-          </Button>
+          <Group gap="xs">
+            <Button
+              variant="light"
+              leftSection={<IconPlus size={16} />}
+              onClick={billingDialogs.openNew}
+            >
+              Nova fatura
+            </Button>
+            <Button leftSection={<IconPlus size={16} />} onClick={openNew}>
+              Nova NF de serviço
+            </Button>
+          </Group>
         )}
       </Group>
 
@@ -162,11 +181,33 @@ export function ProjectDetailPage() {
                 />
               </QueryBoundary>
             </Stack>
+
+            <Stack gap="xs">
+              <Text fw={600}>Faturas emitidas</Text>
+              <QueryBoundary
+                isLoading={billings.isLoading}
+                isError={billings.isError}
+                error={billings.error}
+                errorTitle="Não foi possível carregar as faturas da obra"
+              >
+                <ProjectBillingsTable
+                  billings={billings.data ?? []}
+                  showProject={false}
+                  {...billingDialogs.tableHandlers}
+                />
+              </QueryBoundary>
+            </Stack>
+
+            <RetainageSection
+              projectId={project.id}
+              projectName={project.name}
+            />
           </Stack>
         )}
       </QueryBoundary>
 
       {dialogs}
+      {billingDialogs.dialogs}
     </Stack>
   );
 }

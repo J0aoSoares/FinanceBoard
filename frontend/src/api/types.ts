@@ -395,11 +395,19 @@ export interface ProjectResultEntry {
   outstanding: Money;
   cost: ProjectCost;
   result: Money;
+  retainage: ProjectRetainageResult;
+}
+
+export interface ProjectRetainageResult {
+  withheld: Money;
+  released: Money;
+  balance: Money;
 }
 
 export interface ProjectResultReport extends ReportEcho {
   projects: ProjectResultEntry[];
   administrative: ProjectCost;
+  retainageTotals: ProjectRetainageResult;
   unassignedRevenue: {
     revenue: ProjectRevenue;
     received: Money;
@@ -479,3 +487,119 @@ export const USER_ROLE_DESCRIPTIONS: Record<UserRole, string> = {
 };
 
 export const USER_ROLES: UserRole[] = ['ADMIN', 'OPERATOR', 'VIEWER'];
+
+export interface Bank {
+  id: string;
+  name: string;
+  code: string;
+}
+
+export const PROJECT_BILLING_STATUS_LABELS: Record<EffectiveStatus, string> = {
+  PENDING: 'Pendente',
+  PAID: 'Paga',
+  OVERDUE: 'Vencida',
+};
+
+export type ProjectBillingDateBasis = 'due' | 'payment';
+
+export interface ProjectBilling {
+  id: string;
+  number: string;
+  amount: Money;
+  retainageAmount: Money;
+  retainagePercent: string | null;
+  netAmount: Money;
+  dueDate: string;
+  paymentDate: string | null;
+  companyId: string;
+  projectId: string;
+  bankId: string | null;
+  company: Company;
+  project: Project;
+  bank: Bank | null;
+  effectiveStatus: EffectiveStatus;
+}
+
+export interface CreateProjectBillingInput {
+  number: string;
+  companyId: string;
+  projectId: string;
+  amount: Money;
+  retainageAmount?: Money;
+  retainagePercent?: string;
+  dueDate: string;
+  paymentDate?: string;
+  bankId?: string;
+}
+
+export type UpdateProjectBillingInput = Partial<
+  Omit<CreateProjectBillingInput, 'paymentDate' | 'bankId'>
+>;
+
+export interface ProjectBillingFilters {
+  companyId?: string;
+  projectId?: string;
+  bankId?: string;
+  status?: EffectiveStatus;
+  month?: string;
+  dateBasis?: ProjectBillingDateBasis;
+}
+
+export interface ProjectBillingBankTotal {
+  bankId: string;
+  bankName: string;
+  bankCode: string;
+  billings: Money;
+  retainageReleases: Money;
+  total: Money;
+}
+
+export interface ProjectBillingTotals {
+  billingCount: number;
+  paidCount: number;
+  invoiced: Money;
+  retainage: Money;
+  net: Money;
+  received: Money;
+  outstanding: Money;
+  releaseCount: number;
+  retainageReleased: Money;
+  totalReceived: Money;
+  receivedByBank: ProjectBillingBankTotal[];
+}
+
+export interface RetainageRelease {
+  id: string;
+  amount: Money;
+  returnDate: string;
+  projectId: string;
+  companyId: string;
+  bankId: string;
+  company: Company;
+  bank: Bank;
+}
+
+export interface CompanyRetainage {
+  companyId: string;
+  legalName: string;
+  withheld: Money;
+  released: Money;
+  balance: Money;
+}
+
+export interface ProjectRetainage {
+  projectId: string;
+  withheld: Money;
+  released: Money;
+  balance: Money;
+  companies: CompanyRetainage[];
+  releases: RetainageRelease[];
+}
+
+export interface CreateRetainageReleaseInput {
+  projectId: string;
+  companyId: string;
+  amount: Money;
+  returnDate: string;
+  bankId: string;
+}

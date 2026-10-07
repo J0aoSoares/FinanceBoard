@@ -12,6 +12,11 @@ import {
   receivableEffectiveDate,
   receivablePeriodWhere,
 } from '../common/receivable-period.util';
+import {
+  projectBillingEffectiveDate,
+  projectBillingPeriodWhere,
+  retainageReleaseWithinWhere,
+} from '../common/project-billing-period.util';
 import { ReportPeriodQueryDto } from './dto/report-period-query.dto';
 
 type MonthBucket = {
@@ -19,6 +24,8 @@ type MonthBucket = {
   inflowGross: Prisma.Decimal;
   inflowWithholdings: Prisma.Decimal;
   outflow: Prisma.Decimal;
+  projectBillings: Prisma.Decimal;
+  retainageReleases: Prisma.Decimal;
 };
 
 @Injectable()
@@ -89,6 +96,43 @@ export class CashflowService {
       );
     }
 
+    const scope = [
+      query.companyId ? { companyId: query.companyId } : {},
+      query.projectId ? { projectId: query.projectId } : {},
+    ];
+    const [projectBillings, retainageReleases] = await Promise.all([
+      this.prisma.projectBilling.findMany({
+        where: {
+          AND: [projectBillingPeriodWhere(start, end, regime), ...scope],
+        },
+        select: { netAmount: true, dueDate: true, paymentDate: true },
+      }),
+      this.prisma.retainageRelease.findMany({
+        where: { AND: [retainageReleaseWithinWhere(start, end), ...scope] },
+        select: { amount: true, returnDate: true },
+      }),
+    ]);
+
+    for (const billing of projectBillings) {
+      const date = projectBillingEffectiveDate(billing, regime);
+      const bucket = date && buckets.get(monthKey(date));
+      if (bucket) {
+        bucket.inflow = bucket.inflow.plus(billing.netAmount);
+        bucket.inflowGross = bucket.inflowGross.plus(billing.netAmount);
+        bucket.projectBillings = bucket.projectBillings.plus(billing.netAmount);
+      }
+    }
+    for (const release of retainageReleases) {
+      const bucket = buckets.get(monthKey(release.returnDate));
+      if (bucket) {
+        bucket.inflow = bucket.inflow.plus(release.amount);
+        bucket.inflowGross = bucket.inflowGross.plus(release.amount);
+        bucket.retainageReleases = bucket.retainageReleases.plus(
+          release.amount,
+        );
+      }
+    }
+
     let accumulated = new Prisma.Decimal(0);
     const monthlyResults = months.map((month) => {
       const bucket = buckets.get(month) as MonthBucket;
@@ -114,6 +158,8 @@ export class CashflowService {
           bucket.inflowWithholdings,
         ),
         outflow: acc.outflow.plus(bucket.outflow),
+        projectBillings: acc.projectBillings.plus(bucket.projectBillings),
+        retainageReleases: acc.retainageReleases.plus(bucket.retainageReleases),
       };
     }, this.emptyBucket());
 
@@ -130,6 +176,20 @@ export class CashflowService {
         outflow: totals.outflow.toFixed(2),
         balance: totals.inflow.minus(totals.outflow).toFixed(2),
       },
+      projectBillingInflows: {
+        months: months.map((month) => {
+          const bucket = buckets.get(month) as MonthBucket;
+          return {
+            month,
+            projectBillings: bucket.projectBillings.toFixed(2),
+            retainageReleases: bucket.retainageReleases.toFixed(2),
+          };
+        }),
+        totals: {
+          projectBillings: totals.projectBillings.toFixed(2),
+          retainageReleases: totals.retainageReleases.toFixed(2),
+        },
+      },
     };
   }
 
@@ -139,6 +199,8 @@ export class CashflowService {
       inflowGross: new Prisma.Decimal(0),
       inflowWithholdings: new Prisma.Decimal(0),
       outflow: new Prisma.Decimal(0),
+      projectBillings: new Prisma.Decimal(0),
+      retainageReleases: new Prisma.Decimal(0),
     };
   }
 }

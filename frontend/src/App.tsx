@@ -14,6 +14,7 @@ import { ProjectResultsReportPage } from './features/reports/ProjectResultsRepor
 import { ReportsLayout } from './features/reports/ReportsLayout';
 import { WithholdingsReportPage } from './features/reports/WithholdingsReportPage';
 import { ReceivablesPage } from './features/receivables/ReceivablesPage';
+import { ProjectBillingsPage } from './features/project-billings/ProjectBillingsPage';
 import { SuppliersPage } from './features/suppliers/SuppliersPage';
 import { UsersPage } from './features/users/UsersPage';
 
@@ -32,6 +33,7 @@ export function App() {
           <Route index element={<Navigate to="/bills" replace />} />
           <Route path="/bills" element={<BillsPage />} />
           <Route path="/receivables" element={<ReceivablesPage />} />
+          <Route path="/project-billings" element={<ProjectBillingsPage />} />
           <Route path="/reports" element={<ReportsLayout />}>
             <Route index element={<CashflowReportPage />} />
             <Route path="cashflow" element={<CashflowReportPage />} />

@@ -13,6 +13,8 @@ import { CategoryModule } from './category/category.module';
 import { BillModule } from './bill/bill.module';
 import { InvoiceModule } from './invoice/invoice.module';
 import { ReceivableModule } from './receivable/receivable.module';
+import { ProjectBillingModule } from './project-billing/project-billing.module';
+import { BankModule } from './bank/bank.module';
 import { ReportModule } from './report/report.module';
 import { validateEnv } from './config/env.validation';
 
@@ -32,6 +34,8 @@ import { validateEnv } from './config/env.validation';
     BillModule,
     InvoiceModule,
     ReceivableModule,
+    ProjectBillingModule,
+    BankModule,
     ReportModule,
   ],
   providers: [

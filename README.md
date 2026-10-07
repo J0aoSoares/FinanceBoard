@@ -23,6 +23,7 @@ O sistema resolve quatro problemas que uma planilha não resolve bem:
 - **Competência x caixa.** A mesma base de dados conta duas histórias: quando a receita e a despesa foram geradas (competência da NF de serviço e emissão da NF do fornecedor) e quando o dinheiro entrou ou saiu (recebimento e pagamento). O usuário escolhe qual visão está vendo.
 - **Vários boletos da mesma NF.** Uma compra paga em vários boletos é cadastrada de uma vez, e cada boleto aparece no mês do próprio vencimento, com a posição na NF ("boleto C · 3/10") e o progresso de pagamento. Cada boleto aceita o número do documento ou a linha digitável (validada pelos dígitos verificadores quando completa) e pode ser cadastrado já como pago.
 - **Retenções sofridas.** Quando o tomador paga a NF de serviço, retém impostos (INSS, ISS, IRRF, PIS/COFINS/CSLL). O sistema guarda o bruto, cada retenção e o líquido — que é o que entra no caixa —, com relatório por empresa, por tipo e por obra para a contabilidade compensar.
+- **Faturas e caução.** Faturas emitidas contra obras, com caução retida pelo cliente (por percentual ou valor), recebimento por banco e devolução da caução por obra. Os totais por banco somam pagamentos e devoluções para conferir com o extrato.
 - **Resultado por obra.** Receita das NFs emitidas, recebido no período, custo dos boletos lançados na obra (por categoria) e o resultado. Boletos sem obra aparecem como despesas administrativas, fora das obras mas somados no consolidado.
 
 ---

@@ -31,9 +31,11 @@ model Company {
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  bills       Bill[]
-  invoices    Invoice[]
-  receivables Receivable[]
+  bills             Bill[]
+  invoices          Invoice[]
+  receivables       Receivable[]
+  projectBillings   ProjectBilling[]
+  retainageReleases RetainageRelease[]
 
   @@map("companies")
 }
@@ -47,8 +49,10 @@ model Project {
   createdAt  DateTime      @default(now())
   updatedAt  DateTime      @updatedAt
 
-  bills       Bill[]
-  receivables Receivable[]
+  bills             Bill[]
+  receivables       Receivable[]
+  projectBillings   ProjectBilling[]
+  retainageReleases RetainageRelease[]
 
   @@map("projects")
 }
@@ -209,6 +213,68 @@ model ReceivableWithholding {
 
   @@unique([receivableId, type])
   @@map("receivable_withholdings")
+}
+
+model Bank {
+  id        String   @id @default(cuid())
+  name      String
+  code      String   @unique
+  createdAt DateTime @default(now())
+
+  projectBillings   ProjectBilling[]
+  retainageReleases RetainageRelease[]
+
+  @@map("banks")
+}
+
+model ProjectBilling {
+  id               String    @id @default(cuid())
+  number           String
+  amount           Decimal   @db.Decimal(12, 2)
+  retainageAmount  Decimal   @default(0) @db.Decimal(12, 2)
+  retainagePercent Decimal?  @db.Decimal(5, 2)
+  netAmount        Decimal   @db.Decimal(12, 2)
+  dueDate          DateTime
+  paymentDate      DateTime?
+
+  companyId String
+  projectId String
+  bankId    String?
+
+  company Company @relation(fields: [companyId], references: [id])
+  project Project @relation(fields: [projectId], references: [id])
+  bank    Bank?   @relation(fields: [bankId], references: [id], onDelete: Restrict)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([companyId, number])
+  @@index([companyId, dueDate])
+  @@index([companyId, paymentDate])
+  @@index([projectId])
+  @@index([bankId])
+  @@map("project_billings")
+}
+
+model RetainageRelease {
+  id         String   @id @default(cuid())
+  amount     Decimal  @db.Decimal(12, 2)
+  returnDate DateTime
+
+  projectId String
+  companyId String
+  bankId    String
+
+  project Project @relation(fields: [projectId], references: [id])
+  company Company @relation(fields: [companyId], references: [id])
+  bank    Bank    @relation(fields: [bankId], references: [id])
+
+  createdAt DateTime @default(now())
+
+  @@index([projectId, companyId])
+  @@index([companyId, returnDate])
+  @@index([bankId])
+  @@map("retainage_releases")
 }
 
 enum UserRole {

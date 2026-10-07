@@ -148,9 +148,27 @@ const PROJECTS = [
   },
 ];
 
+const BANKS = [
+  { name: 'Itaú', code: '341' },
+  { name: 'Banco do Brasil', code: '001' },
+  { name: 'Santander', code: '033' },
+];
+
+async function seedBanks() {
+  for (const bank of BANKS) {
+    await prisma.bank.upsert({
+      where: { code: bank.code },
+      update: { name: bank.name },
+      create: bank,
+    });
+  }
+}
+
 async function main() {
   const adminEmail = await seedAdminUser();
   console.log(`Usuário ADMIN disponível: ${adminEmail}`);
+
+  await seedBanks();
 
   const existingBills = await prisma.bill.count();
   if (existingBills > 0) {

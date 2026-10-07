@@ -1,10 +1,15 @@
 import { useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
-import type { EffectiveStatus, Regime } from '../api/types';
+import type {
+  EffectiveStatus,
+  ProjectBillingDateBasis,
+  Regime,
+} from '../api/types';
 import { currentMonth, isMonth, withYear, yearOf } from '../lib/date';
 
 const REGIMES: Regime[] = ['accrual', 'cash'];
 const STATUSES: EffectiveStatus[] = ['PENDING', 'PAID', 'OVERDUE'];
+const DATE_BASES: ProjectBillingDateBasis[] = ['due', 'payment'];
 
 export interface GlobalFilters {
   companyId?: string;
@@ -18,6 +23,8 @@ export interface ScreenFilters {
   supplierId?: string;
   clientName?: string;
   status?: EffectiveStatus;
+  bankId?: string;
+  dateBasis?: ProjectBillingDateBasis;
 }
 
 export type FilterKey = keyof GlobalFilters | keyof ScreenFilters;
@@ -44,6 +51,7 @@ export function useGlobalFilters() {
 
   const screen = useMemo<ScreenFilters>(() => {
     const status = read('status');
+    const dateBasis = read('dateBasis');
     return {
       projectId: read('projectId'),
       categoryId: read('categoryId'),
@@ -51,6 +59,10 @@ export function useGlobalFilters() {
       clientName: read('clientName'),
       status: STATUSES.includes(status as EffectiveStatus)
         ? (status as EffectiveStatus)
+        : undefined,
+      bankId: read('bankId'),
+      dateBasis: DATE_BASES.includes(dateBasis as ProjectBillingDateBasis)
+        ? (dateBasis as ProjectBillingDateBasis)
         : undefined,
     };
   }, [read]);
@@ -83,6 +95,8 @@ export function useGlobalFilters() {
           'supplierId',
           'clientName',
           'status',
+          'bankId',
+          'dateBasis',
         ]) {
           next.delete(key);
         }

@@ -50,13 +50,15 @@ export class ProjectService {
   }
 
   async remove(id: string) {
-    const [bills, receivables] = await Promise.all([
+    const counts = await Promise.all([
       this.prisma.bill.count({ where: { projectId: id } }),
       this.prisma.receivable.count({ where: { projectId: id } }),
+      this.prisma.projectBilling.count({ where: { projectId: id } }),
+      this.prisma.retainageRelease.count({ where: { projectId: id } }),
     ]);
-    if (bills > 0 || receivables > 0) {
+    if (counts.some((count) => count > 0)) {
       throw new ConflictException(
-        'Não é possível remover esta obra: existem boletos ou contas a receber vinculados a ela. Encerre a obra em vez de removê-la',
+        'Não é possível remover esta obra: existem boletos, contas a receber, faturas ou devoluções de caução vinculados a ela. Encerre a obra em vez de removê-la',
       );
     }
 
@@ -74,7 +76,7 @@ export class ProjectService {
       }
       if (error.code === 'P2003') {
         return new ConflictException(
-          'Não é possível remover esta obra: existem boletos ou contas a receber vinculados a ela',
+          'Não é possível remover esta obra: existem boletos, contas a receber, faturas ou devoluções de caução vinculados a ela',
         );
       }
       if (error.code === 'P2025') {

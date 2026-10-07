@@ -116,6 +116,23 @@ export function formatMoney(value: Money | null | undefined): string {
   return `${negative ? '-' : ''}${grouped},${fraction.padEnd(2, '0')}`;
 }
 
+const PERCENT = /^\d{1,2}(\.\d{1,2})?$/;
+
+export function isPercent(value: string): boolean {
+  return PERCENT.test(value);
+}
+
+export function percentOf(value: Money, percent: string): Money | null {
+  if (!isCanonicalMoney(value) || !isPercent(percent)) {
+    return null;
+  }
+  const [whole, fraction = ''] = percent.split('.');
+  const hundredths = BigInt(`${whole}${fraction.padEnd(2, '0')}`);
+  const cents = BigInt(toCents(value));
+  const rounded = (cents * hundredths + 5000n) / 10000n;
+  return fromCents(Number(rounded));
+}
+
 export function formatCurrency(value: Money | null | undefined): string {
   const formatted = formatMoney(value);
   return formatted === '—' ? formatted : `R$ ${formatted}`;

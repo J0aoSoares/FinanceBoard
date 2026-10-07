@@ -3,12 +3,16 @@ import classes from './StatusBadge.module.css';
 
 interface StatusBadgeProps {
   status: EffectiveStatus;
+  labels?: Record<EffectiveStatus, string>;
 }
 
-export function StatusBadge({ status }: StatusBadgeProps) {
+export function StatusBadge({
+  status,
+  labels = STATUS_LABELS,
+}: StatusBadgeProps) {
   return (
     <span className={`${classes.badge} ${classes[status]}`}>
-      {STATUS_LABELS[status]}
+      {labels[status]}
     </span>
   );
 }

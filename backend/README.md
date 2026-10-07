@@ -16,6 +16,7 @@ Referência das rotas do backend. Base: `http://localhost:3000`.
 - [Boletos](#boletos-bills)
 - [Faturas (fora da interface)](#faturas-invoices)
 - [Contas a Receber](#contas-a-receber-receivables)
+- [Faturas emitidas e caução](#faturas-emitidas-e-caução-project-billings-retainage-releases-banks)
 - [Relatórios](#relatórios-reports)
 
 ---
@@ -376,7 +377,7 @@ Além dos campos do registro e das relações, cada boleto traz `effectiveStatus
 
 ## Faturas (`/invoices`)
 
-**Fora da interface.** A empresa não registra faturas. O módulo continua no backend por compatibilidade — a decisão de removê-lo é separada —, mas o frontend não o usa e o seed não cria faturas. A migração `20260929120100_detach_bills_from_invoices` desvinculou os boletos que estavam em faturas, preservando o vencimento, o status e a data de pagamento que valiam para cada um. Desde então os boletos se comportam pelas próprias datas.
+**Fora da interface.** Contas a pagar agrupadas de fornecedor; não confundir com as [faturas emitidas contra obras](#faturas-emitidas-e-caução-project-billings-retainage-releases-banks). O módulo continua no backend por compatibilidade — a decisão de removê-lo é separada —, mas o frontend não o usa e o seed não cria faturas. A migração `20260929120100_detach_bills_from_invoices` desvinculou os boletos que estavam em faturas, preservando o vencimento, o status e a data de pagamento que valiam para cada um. Desde então os boletos se comportam pelas próprias datas.
 
 As rotas (`POST/GET/PATCH/DELETE /invoices`, `POST/DELETE /invoices/:id/payment`) seguem funcionando e cobertas por `invoice.e2e-spec.ts`. Um boleto dentro de fatura herda o vencimento e o status dela e só pode ser pago pela fatura.
 
@@ -439,6 +440,60 @@ O valor esperado no recebimento é o **líquido**, e é ele que entra no fluxo d
 
 ---
 
+## Faturas emitidas e caução (`/project-billings`, `/retainage-releases`, `/banks`)
+
+Fatura emitida **pela empresa contra uma obra** — um recebível, ao lado das NFs de serviço. Não tem relação com o módulo antigo `/invoices` (contas a pagar de fornecedor, fora da interface). Na interface, a aba se chama **Faturas**.
+
+```json
+{
+  "number": "FAT-0101",
+  "companyId": "clx...",
+  "projectId": "clx...",
+  "amount": "10000.00",
+  "retainagePercent": "5",
+  "dueDate": "2026-06-15"
+}
+```
+
+- `number` é único por empresa emissora; o mesmo número em outra empresa é aceito
+- `amount` > 0, string com até 2 casas
+- **caução** (opcional): envie `retainagePercent` (menor que 100, até 2 casas) **ou** `retainageAmount`, nunca os dois. Com percentual, o valor é calculado em centavos, arredondando o meio para cima (`10.10 × 5% = 0.51`); o percentual fica guardado só como referência e é reaplicado se o valor da fatura mudar
+- caução maior ou igual ao valor é recusada; `netAmount = amount − retainageAmount` é sempre calculado pela API — enviar `netAmount` retorna 400
+- `paymentDate` + `bankId` (opcionais) lançam uma fatura antiga já paga: os dois juntos ou nenhum, e a data não pode ser futura
+
+Caução **não é imposto**: não entra no relatório de retenções. É valor que a obra devolve depois.
+
+**Status** derivado, comparando com hoje em UTC: `PAID` (com data de pagamento), `OVERDUE` (sem pagamento e vencida), `PENDING`.
+
+| Rota | O que faz |
+|---|---|
+| `GET /project-billings` | lista; filtros `companyId`, `projectId`, `bankId`, `status`, `month=aaaa-mm` e `dateBasis=due` (padrão) ou `payment` |
+| `GET /project-billings/summary` | totais com **os mesmos filtros**: `invoiced`, `retainage`, `received` (líquido das pagas), `retainageReleased`, `totalReceived` e `receivedByBank` |
+| `GET/PATCH/DELETE /project-billings/:id` | detalhe, edição e exclusão |
+| `POST /project-billings/:id/payment` | `{ "paymentDate", "bankId" }` — o pagamento corresponde ao **líquido** |
+| `DELETE /project-billings/:id/payment` | estorna, limpando data e banco |
+
+Fatura paga não aceita mudar valor nem caução (os demais campos podem ser editados) e não pode ser excluída — estorne antes. O `PATCH` não mexe em pagamento.
+
+**Total por banco:** soma pagamentos de fatura e devoluções de caução que respeitam os filtros ativos (empresa, obra, banco e mês — a devolução usa a própria data). Com `status=PENDING` ou `OVERDUE` as devoluções ficam de fora. Para bater com o extrato, use `dateBasis=payment`.
+
+### Devolução de caução
+
+A devolução vem por obra, não por fatura, e cai na conta de uma empresa: `POST /retainage-releases` com `{ "projectId", "companyId", "amount", "returnDate", "bankId" }`.
+
+- saldo = cauções das faturas da obra naquela empresa − devoluções; devolução acima do saldo é recusada
+- data não pode ser futura
+- `DELETE /retainage-releases/:id` estorna e o valor volta ao saldo
+- `GET /retainage-releases?projectId=` devolve `withheld`, `released`, `balance`, o saldo por empresa e o histórico
+
+Excluir fatura, reduzir a caução ou trocar a obra/empresa de uma fatura é recusado se a devolução já registrada ficar maior que a caução retida. Essas operações rodam em transação serializável.
+
+### Bancos
+
+`GET /banks` lista os bancos cadastrados (Itaú 341, Banco do Brasil 001, Santander 033). Eles são criados pela migração `20261007120000_project_billings` e mantidos pelo seed; não há tela de cadastro.
+
+---
+
 ## Relatórios (`/reports`)
 
 As três rotas aceitam os mesmos parâmetros:
@@ -459,6 +514,8 @@ Período máximo de 36 meses. `from` posterior a `to` retorna 400. A resposta tr
 |------------------|-----------------------------------|---------------------------|
 | NF de serviço    | mês de **competência** da NF      | data de recebimento       |
 | Boleto           | data de **emissão** da NF (sem NF: vencimento) | data de pagamento |
+| Fatura (obra)    | vencimento (líquido)              | data de pagamento (líquido) |
+| Devolução de caução | data da devolução              | data da devolução         |
 
 Os testes de `report.e2e-spec.ts` provam, mês a mês e nos dois regimes, que os totais do fluxo de caixa são iguais à soma das listagens de Boletos (`dateBasis=issue` / `payment`) e de Contas a Receber (`dateBasis=competence` / `receipt`).
 
@@ -485,7 +542,7 @@ Os testes de `report.e2e-spec.ts` provam, mês a mês e nos dois regimes, que os
 }
 ```
 
-`inflow` é o **líquido** das NFs de serviço; `inflowGross` e `inflowWithholdings` mostram o faturado bruto e as retenções sofridas. `outflow` é o valor dos boletos. Meses sem movimento aparecem zerados, e `accumulatedBalance` acumula desde o início do período consultado.
+`inflow` é o **líquido** das NFs de serviço; `inflowGross` e `inflowWithholdings` mostram o faturado bruto e as retenções sofridas. `outflow` é o valor dos boletos. O **líquido** das faturas e as devoluções de caução também entram em `inflow` (e em `inflowGross`, sem gerar retenção); o detalhamento fica em `projectBillingInflows`, por mês e no total. Meses sem movimento aparecem zerados, e `accumulatedBalance` acumula desde o início do período consultado.
 
 ### Retenções sofridas — `GET /reports/withholdings`
 
@@ -530,8 +587,9 @@ As retenções sofridas nas NFs de serviço — o valor que a contabilidade comp
 }
 ```
 
-- **receita**: NFs de serviço da obra no período (bruto, retenções e líquido)
-- **recebido**: líquido das NFs recebidas **dentro do período**, qualquer que seja a competência
+- **receita**: NFs de serviço da obra no período (bruto, retenções e líquido) e faturas da obra pelo valor **cheio** — a caução é receita da obra, só recebida depois
+- **recebido**: líquido das NFs recebidas e das faturas pagas **dentro do período**, mais as devoluções de caução do período
+- **caução**: cada obra traz `retainage` (`withheld` no período, `released` no período e `balance`, o saldo ainda não devolvido até o fim do período) — quanto do resultado ainda não virou dinheiro; o consolidado fica em `retainageTotals`
 - **custo**: boletos lançados na obra no período, com quebra por categoria; boletos antigos com retenções entram pelo valor bruto
 - **resultado** = recebido − custo
 - `administrative` agrupa os boletos sem obra: ficam fora do resultado das obras, mas somam no consolidado; `unassignedRevenue` faz o mesmo com as NFs sem obra
