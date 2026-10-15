@@ -1,9 +1,16 @@
 import type {
   Bill,
+  BillDuplicate,
+  BillDuplicateQuery,
   CreateInstallmentsInput,
   UpdateBillInput,
 } from '../../api/types';
-import { addMonthsClamped, apiDate, monthlyDueDates } from '../../lib/date.ts';
+import {
+  addMonthsClamped,
+  apiDate,
+  formatDate,
+  monthlyDueDates,
+} from '../../lib/date.ts';
 import {
   boletoReferenceError,
   formatDigitableLine,
@@ -345,4 +352,39 @@ export function buildUpdatePayload(values: BillFormValues): UpdateBillInput {
 // Boleto já pago só aceita completar os dados da NF.
 export function buildNfUpdatePayload(values: BillFormValues): UpdateBillInput {
   return nfFields(values);
+}
+
+export function duplicateQueryFor(
+  values: Pick<BillFormValues, 'supplierId' | 'documentNumber'>,
+  billId?: string,
+): BillDuplicateQuery | null {
+  const documentNumber = values.documentNumber.trim();
+  if (!values.supplierId || documentNumber === '') {
+    return null;
+  }
+  return billId
+    ? { supplierId: values.supplierId, documentNumber, excludeBillId: billId }
+    : { supplierId: values.supplierId, documentNumber };
+}
+
+export function nfIdentityChanged(
+  bill: Bill | null,
+  values: Pick<BillFormValues, 'supplierId' | 'documentNumber'>,
+) {
+  if (!bill) {
+    return true;
+  }
+  return (
+    bill.supplierId !== values.supplierId ||
+    (bill.documentNumber ?? '').trim() !== values.documentNumber.trim()
+  );
+}
+
+export function duplicateDescription(duplicate: BillDuplicate) {
+  const boletos =
+    duplicate.billCount === 1 ? '1 boleto' : `${duplicate.billCount} boletos`;
+  const issued = duplicate.issueDate
+    ? `emitida em ${formatDate(duplicate.issueDate)}, `
+    : '';
+  return `${nfLabel(duplicate.documentNumber)} — ${issued}lançada em ${formatDate(duplicate.createdAt)} (${boletos}, ${formatCurrency(duplicate.totalAmount)}) · ${duplicate.companyName}`;
 }

@@ -342,6 +342,12 @@ Opcional, até 60 caracteres. Guarda o **número do documento** do boleto (texto
 
 `POST /bills` e cada item de `installments` em `POST /bills/installments` aceitam `paymentDate` (opcional, `aaaa-mm-dd`). Com ele, o boleto já nasce `PAID` com essa data de pagamento; sem ele, nasce `PENDING`. No `PATCH` o campo não é aceito — pagamento e estorno continuam em `/bills/:id/payment`.
 
+### Aviso de NF já cadastrada — `GET /bills/duplicates`
+
+`?supplierId=&documentNumber=&excludeBillId=` lista as NFs do **mesmo fornecedor** com o mesmo número, agrupadas por NF: `documentNumber`, `issueDate`, `createdAt`, `companyName`, `billCount` e `totalAmount`. A comparação ignora maiúsculas, acentos, espaços, pontuação, o prefixo `NF`/`NFe`/`NFS`/`NFSe` e zeros à esquerda — `NF-1088`, `nf 1088` e `001088` são a mesma NF. Boletos sem NF não entram. `excludeBillId` tira da busca o próprio boleto e o grupo dele, para a edição não acusar a si mesma.
+
+É um **aviso**, não um bloqueio: fornecedores diferentes podem repetir números, e NF complementar ou lançamento refeito são legítimos. O formulário mostra o aviso enquanto o número é digitado e pede confirmação antes de salvar; os `POST`/`PATCH` de boletos não recusam número repetido.
+
 ### Edição, pagamento e exclusão
 
 Pagar, estornar e editar são **por boleto**, com uma exceção: `documentNumber` e `issueDate` são dados da NF e, ao editar um boleto de grupo, são gravados em **todos os boletos do grupo** (enviar `null` limpa). Boleto pago só aceita `PATCH` com esses dois campos — é assim que se completa a NF que chegou depois do pagamento; para mudar o resto, estorne antes com `DELETE /bills/:id/payment`.

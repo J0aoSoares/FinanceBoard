@@ -4,20 +4,30 @@ import {
   Divider,
   Grid,
   Group,
+  List,
   Modal,
   Stack,
+  Text,
   TextInput,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
-import { IconInfoCircle } from '@tabler/icons-react';
+import { useDebouncedValue } from '@mantine/hooks';
+import { modals } from '@mantine/modals';
+import { IconAlertTriangle, IconInfoCircle } from '@tabler/icons-react';
+import { useQueryClient } from '@tanstack/react-query';
 import { CategorySelect } from '../../components/fields/CategorySelect';
 import { CompanySelect } from '../../components/fields/CompanySelect';
 import { DateField } from '../../components/fields/DateField';
 import { MoneyInput } from '../../components/fields/MoneyInput';
 import { ProjectSelect } from '../../components/fields/ProjectSelect';
 import { SupplierSelect } from '../../components/fields/SupplierSelect';
-import { useCreateInstallments, useUpdateBill } from '../../hooks/use-bills';
-import type { Bill } from '../../api/types';
+import {
+  billDuplicatesQuery,
+  useBillDuplicates,
+  useCreateInstallments,
+  useUpdateBill,
+} from '../../hooks/use-bills';
+import type { Bill, BillDuplicate } from '../../api/types';
 import {
   billFormValidation,
   billLabel,
@@ -25,11 +35,26 @@ import {
   buildInstallmentsPayload,
   buildNfUpdatePayload,
   buildUpdatePayload,
+  duplicateDescription,
+  duplicateQueryFor,
   emptyBillForm,
   hasLegacyWithholdings,
+  nfIdentityChanged,
   type BillFormValues,
 } from './bill-form';
 import { InstallmentsEditor } from './InstallmentsEditor';
+
+function DuplicateList({ duplicates }: { duplicates: BillDuplicate[] }) {
+  return (
+    <List size="sm" spacing={2}>
+      {duplicates.map((duplicate) => (
+        <List.Item key={duplicate.groupId ?? duplicate.createdAt}>
+          {duplicateDescription(duplicate)}
+        </List.Item>
+      ))}
+    </List>
+  );
+}
 
 interface BillFormModalProps {
   bill: Bill | null;
@@ -44,6 +69,7 @@ export function BillFormModal({
 }: BillFormModalProps) {
   const createInstallments = useCreateInstallments();
   const updateBill = useUpdateBill();
+  const queryClient = useQueryClient();
 
   const form = useForm<BillFormValues>({
     mode: 'controlled',
@@ -57,13 +83,23 @@ export function BillFormModal({
   const values = form.getValues();
   const isEditing = bill !== null;
   const legacy = hasLegacyWithholdings(bill);
-  // Boleto pago: só dá para completar os dados da NF que chegou depois.
   const nfOnly = isEditing && bill.status === 'PAID';
   const grouped = isEditing && (bill.group?.billCount ?? 1) > 1;
   const pending = createInstallments.isPending || updateBill.isPending;
   const count = values.installments.length;
+  const [debouncedNumber] = useDebouncedValue(values.documentNumber, 400);
+  const duplicates = useBillDuplicates(
+    duplicateQueryFor(
+      { supplierId: values.supplierId, documentNumber: debouncedNumber },
+      bill?.id,
+    ),
+  );
+  const knownDuplicates =
+    duplicateQueryFor(values, bill?.id) && duplicates.data
+      ? duplicates.data
+      : [];
 
-  const handleSubmit = (submitted: BillFormValues) => {
+  const save = (submitted: BillFormValues) => {
     const onSuccess = () => onClose();
 
     if (isEditing) {
@@ -81,6 +117,44 @@ export function BillFormModal({
         onSuccess,
       });
     }
+  };
+
+  const handleSubmit = async (submitted: BillFormValues) => {
+    const query = duplicateQueryFor(submitted, bill?.id);
+    if (!query || !nfIdentityChanged(bill, submitted)) {
+      save(submitted);
+      return;
+    }
+    const found = await queryClient
+      .fetchQuery(billDuplicatesQuery(query))
+      .catch(() => [] as BillDuplicate[]);
+    if (found.length === 0) {
+      save(submitted);
+      return;
+    }
+    modals.openConfirmModal({
+      title: 'NF já cadastrada para este fornecedor',
+      centered: true,
+      children: (
+        <Stack gap="xs">
+          <Text size="sm">
+            Já existe um lançamento com este número de NF para o mesmo
+            fornecedor:
+          </Text>
+          <DuplicateList duplicates={found} />
+          <Text size="sm">
+            Se for uma NF complementar ou um lançamento refeito, pode salvar
+            mesmo assim.
+          </Text>
+        </Stack>
+      ),
+      labels: {
+        confirm: isEditing ? 'Salvar mesmo assim' : 'Cadastrar mesmo assim',
+        cancel: 'Voltar e revisar',
+      },
+      confirmProps: { color: 'yellow' },
+      onConfirm: () => save(submitted),
+    });
   };
 
   return (
@@ -102,6 +176,16 @@ export function BillFormModal({
               Este boleto faz parte de uma NF com {bill.group?.billCount}{' '}
               boletos. Número e emissão da NF valem para todos eles; as demais
               alterações valem só para este boleto.
+            </Alert>
+          )}
+          {knownDuplicates.length > 0 && (
+            <Alert
+              color="yellow"
+              variant="light"
+              icon={<IconAlertTriangle size={18} />}
+              title="Esta NF já está cadastrada para este fornecedor"
+            >
+              <DuplicateList duplicates={knownDuplicates} />
             </Alert>
           )}
           {nfOnly && (

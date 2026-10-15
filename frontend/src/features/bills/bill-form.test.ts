@@ -5,9 +5,12 @@ import {
   buildInstallmentsPayload,
   buildNfUpdatePayload,
   buildUpdatePayload,
+  duplicateDescription,
+  duplicateQueryFor,
   emptyBillForm,
   generateRows,
   nextRow,
+  nfIdentityChanged,
   totalDifference,
   type BillFormValues,
   nfLabel,
@@ -303,5 +306,45 @@ describe('formulário da NF de boletos', () => {
       dueDate: '2026-02-10',
       digitableLine: null,
     });
+  });
+});
+
+describe('aviso de NF já cadastrada', () => {
+  it('só consulta com fornecedor e número preenchidos', () => {
+    assert.equal(duplicateQueryFor(filled({ supplierId: null })), null);
+    assert.equal(duplicateQueryFor(filled({ documentNumber: '  ' })), null);
+    assert.deepEqual(duplicateQueryFor(filled(), 'bill-1'), {
+      supplierId: 'supplier',
+      documentNumber: 'NF-555',
+      excludeBillId: 'bill-1',
+    });
+  });
+
+  it('na edição, só pede confirmação se fornecedor ou número mudaram', () => {
+    const bill = {
+      supplierId: 'supplier',
+      documentNumber: 'NF-555',
+    } as Parameters<typeof nfIdentityChanged>[0];
+    assert.equal(nfIdentityChanged(bill, filled()), false);
+    assert.equal(
+      nfIdentityChanged(bill, filled({ documentNumber: 'NF-556' })),
+      true,
+    );
+    assert.equal(nfIdentityChanged(null, filled()), true);
+  });
+
+  it('descreve a NF encontrada com data, boletos e valor', () => {
+    assert.equal(
+      duplicateDescription({
+        groupId: 'g1',
+        documentNumber: '1088',
+        issueDate: '2026-09-12T00:00:00.000Z',
+        createdAt: '2026-09-15T13:00:00.000Z',
+        companyName: 'Terraplenagem',
+        billCount: 3,
+        totalAmount: '4500.00',
+      }),
+      'NF 1088 — emitida em 12/09/2026, lançada em 15/09/2026 (3 boletos, R$ 4.500,00) · Terraplenagem',
+    );
   });
 });

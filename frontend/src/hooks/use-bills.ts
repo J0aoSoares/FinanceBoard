@@ -4,12 +4,14 @@ import {
   createInstallments,
   deleteBill,
   deleteBillGroup,
+  findBillDuplicates,
   listBills,
   payBill,
   reversePayment,
   updateBill,
 } from '../api/bills';
 import type {
+  BillDuplicateQuery,
   BillFilters,
   CreateBillInput,
   CreateInstallmentsInput,
@@ -22,6 +24,18 @@ export const useBills = (filters: BillFilters) =>
     queryKey: ['bills', filters],
     queryFn: () => listBills(filters),
     placeholderData: (previous) => previous,
+  });
+
+export const billDuplicatesQuery = (query: BillDuplicateQuery) => ({
+  queryKey: ['bills', 'duplicates', query],
+  queryFn: () => findBillDuplicates(query),
+  staleTime: 30_000,
+});
+
+export const useBillDuplicates = (query: BillDuplicateQuery | null) =>
+  useQuery({
+    ...billDuplicatesQuery(query ?? { supplierId: '', documentNumber: '' }),
+    enabled: query !== null,
   });
 
 function useBillMutation<TVariables, TData>(

@@ -122,6 +122,22 @@ export interface CreateInstallmentsInput extends BillFieldsInput {
 
 export type BillDateBasis = 'issue' | 'due' | 'payment';
 
+export interface BillDuplicate {
+  groupId: string | null;
+  documentNumber: string;
+  issueDate: string | null;
+  createdAt: string;
+  companyName: string;
+  billCount: number;
+  totalAmount: Money;
+}
+
+export interface BillDuplicateQuery {
+  supplierId: string;
+  documentNumber: string;
+  excludeBillId?: string;
+}
+
 export interface BillFilters {
   companyId?: string;
   projectId?: string;

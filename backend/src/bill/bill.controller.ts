@@ -13,6 +13,7 @@ import {
 import { BillService } from './bill.service';
 import { CreateBillDto } from './dto/create-bill.dto';
 import { CreateInstallmentsDto } from './dto/create-installments.dto';
+import { FindDuplicatesQueryDto } from './dto/find-duplicates-query.dto';
 import { ListBillsQueryDto } from './dto/list-bills-query.dto';
 import { PayBillDto } from './dto/pay-bill.dto';
 import { UpdateBillDto } from './dto/update-bill.dto';
@@ -40,6 +41,11 @@ export class BillController {
   @Get()
   findAll(@Query() query: ListBillsQueryDto) {
     return this.billService.findAll(query);
+  }
+
+  @Get('duplicates')
+  findDuplicates(@Query() query: FindDuplicatesQueryDto) {
+    return this.billService.findDuplicates(query);
   }
 
   @Get(':id')

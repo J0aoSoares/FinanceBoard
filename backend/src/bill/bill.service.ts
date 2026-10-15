@@ -14,9 +14,11 @@ import {
   boletoReferenceError,
   normalizeBoletoReference,
 } from '../common/digitable-line.util';
+import { documentNumberKey } from '../common/document-number.util';
 import { monthRange, startOfTodayUtc } from '../common/period.util';
 import { CreateBillDto } from './dto/create-bill.dto';
 import { CreateInstallmentsDto } from './dto/create-installments.dto';
+import { FindDuplicatesQueryDto } from './dto/find-duplicates-query.dto';
 import {
   BillStatusFilter,
   ListBillsQueryDto,
@@ -230,6 +232,80 @@ export class BillService {
         { invoice: { status: PaymentStatus.PENDING, dueDate: dueDateFilter } },
       ],
     };
+  }
+
+  async findDuplicates(query: FindDuplicatesQueryDto) {
+    const key = documentNumberKey(query.documentNumber);
+    if (key === '') {
+      return [];
+    }
+
+    const excluded = query.excludeBillId
+      ? await this.prisma.bill.findUnique({
+          where: { id: query.excludeBillId },
+          select: { id: true, groupId: true },
+        })
+      : null;
+
+    const candidates = await this.prisma.bill.findMany({
+      where: {
+        supplierId: query.supplierId,
+        documentNumber: { not: null },
+        ...(excluded
+          ? excluded.groupId
+            ? {
+                OR: [{ groupId: null }, { groupId: { not: excluded.groupId } }],
+              }
+            : { id: { not: excluded.id } }
+          : {}),
+      },
+      select: {
+        id: true,
+        groupId: true,
+        documentNumber: true,
+        issueDate: true,
+        createdAt: true,
+        netAmount: true,
+        company: { select: { legalName: true } },
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const matches = new Map<
+      string,
+      {
+        groupId: string | null;
+        documentNumber: string;
+        issueDate: Date | null;
+        createdAt: Date;
+        companyName: string;
+        billCount: number;
+        totalAmount: Prisma.Decimal;
+      }
+    >();
+    for (const bill of candidates) {
+      if (documentNumberKey(bill.documentNumber ?? '') !== key) {
+        continue;
+      }
+      const matchKey = bill.groupId ?? bill.id;
+      const match = matches.get(matchKey) ?? {
+        groupId: bill.groupId,
+        documentNumber: bill.documentNumber as string,
+        issueDate: bill.issueDate,
+        createdAt: bill.createdAt,
+        companyName: bill.company.legalName,
+        billCount: 0,
+        totalAmount: new Prisma.Decimal(0),
+      };
+      match.billCount += 1;
+      match.totalAmount = match.totalAmount.plus(bill.netAmount);
+      matches.set(matchKey, match);
+    }
+
+    return [...matches.values()].map((match) => ({
+      ...match,
+      totalAmount: match.totalAmount.toFixed(2),
+    }));
   }
 
   async findOne(id: string) {

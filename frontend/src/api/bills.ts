@@ -1,6 +1,8 @@
 import { request } from '../lib/http';
 import type {
   Bill,
+  BillDuplicate,
+  BillDuplicateQuery,
   BillFilters,
   CreateBillInput,
   CreateInstallmentsInput,
@@ -9,6 +11,9 @@ import type {
 
 export const listBills = (filters: BillFilters) =>
   request<Bill[]>('/bills', { params: { ...filters } });
+
+export const findBillDuplicates = (query: BillDuplicateQuery) =>
+  request<BillDuplicate[]>('/bills/duplicates', { params: { ...query } });
 
 export const createBill = (input: CreateBillInput) =>
   request<Bill>('/bills', { method: 'POST', body: input });
