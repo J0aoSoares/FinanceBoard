@@ -6,6 +6,8 @@ import { notifyApiError, notifySuccess } from '../lib/notify';
 export interface NamedEntity {
   id: string;
   name: string;
+  searchText?: string;
+  description?: string;
 }
 
 interface CreateByNameConfig<T extends NamedEntity> {

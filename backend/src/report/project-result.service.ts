@@ -52,7 +52,8 @@ type Entry = {
 type ProjectInfo = {
   id: string;
   name: string;
-  clientName: string;
+  clientName: string | null;
+  client: { name: string } | null;
   status: ProjectStatus;
 } | null;
 
@@ -115,7 +116,13 @@ export class ProjectResultService {
       query.projectId ? { projectId: query.projectId } : {},
     ];
     const project = {
-      select: { id: true, name: true, clientName: true, status: true },
+      select: {
+        id: true,
+        name: true,
+        clientName: true,
+        client: { select: { name: true } },
+        status: true,
+      },
     };
 
     const [issued, received, bills] = await Promise.all([
@@ -362,7 +369,7 @@ export class ProjectResultService {
     return {
       projectId: info?.id ?? null,
       name: info?.name ?? 'Receitas sem obra',
-      clientName: info?.clientName ?? null,
+      clientName: info?.client?.name ?? info?.clientName ?? null,
       status: info?.status ?? null,
       revenue: emptyRevenue(),
       received: zero(),

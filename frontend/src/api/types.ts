@@ -12,10 +12,110 @@ export interface Company {
   cnpj: string;
 }
 
+export type PersonType = 'COMPANY' | 'INDIVIDUAL';
+
+export type ContactRole =
+  'ENGINEER' | 'FINANCE' | 'PURCHASING' | 'ADMINISTRATIVE' | 'OTHER';
+
+export const CONTACT_ROLES: ContactRole[] = [
+  'ENGINEER',
+  'FINANCE',
+  'PURCHASING',
+  'ADMINISTRATIVE',
+  'OTHER',
+];
+
+export const CONTACT_ROLE_LABELS: Record<ContactRole, string> = {
+  ENGINEER: 'Engenheiro',
+  FINANCE: 'Financeiro',
+  PURCHASING: 'Compras',
+  ADMINISTRATIVE: 'Administrativo',
+  OTHER: 'Outro',
+};
+
+export const PERSON_TYPE_LABELS: Record<PersonType, string> = {
+  COMPANY: 'Pessoa jurídica',
+  INDIVIDUAL: 'Pessoa física',
+};
+
+export interface ClientContact {
+  id: string;
+  clientId: string;
+  name: string;
+  role: ContactRole;
+  phone: string | null;
+  email: string | null;
+  isPrimary: boolean;
+}
+
+export interface ClientSummary {
+  id: string;
+  personType: PersonType;
+  name: string;
+  tradeName: string | null;
+  document: string | null;
+  phone: string | null;
+  email: string | null;
+}
+
+export interface Client extends ClientSummary {
+  municipalRegistration: string | null;
+  zipCode: string | null;
+  street: string | null;
+  streetNumber: string | null;
+  complement: string | null;
+  district: string | null;
+  city: string | null;
+  state: string | null;
+  notes: string | null;
+  contacts: ClientContact[];
+  projectCount: number;
+}
+
+export interface ClientListItem extends Client {
+  primaryContact: ClientContact | null;
+}
+
+export interface ClientDetail extends Client {
+  projects: { id: string; name: string; status: ProjectStatus }[];
+}
+
+export interface ContactInput {
+  id?: string;
+  name: string;
+  role: ContactRole;
+  phone?: string | null;
+  email?: string | null;
+  isPrimary?: boolean;
+}
+
+export interface ClientInput {
+  personType?: PersonType;
+  name?: string;
+  tradeName?: string | null;
+  document?: string | null;
+  municipalRegistration?: string | null;
+  phone?: string | null;
+  email?: string | null;
+  zipCode?: string | null;
+  street?: string | null;
+  streetNumber?: string | null;
+  complement?: string | null;
+  district?: string | null;
+  city?: string | null;
+  state?: string | null;
+  notes?: string | null;
+  contacts?: ContactInput[];
+}
+
 export interface Project {
   id: string;
   name: string;
-  clientName: string;
+  clientName: string | null;
+  clientId: string | null;
+  client: ClientSummary | null;
+  referenceContactId: string | null;
+  referenceContact: ClientContact | null;
   status: ProjectStatus;
 }
 
@@ -173,8 +273,12 @@ export type UpdateCompanyInput = Partial<CreateCompanyInput>;
 
 export interface CreateProjectInput {
   name: string;
-  clientName: string;
   status?: ProjectStatus;
+  clientId?: string;
+  client?: ClientInput & { name: string };
+  clientChanges?: ClientInput;
+  referenceContactId?: string | null;
+  newReferenceContact?: ContactInput;
 }
 
 export type UpdateProjectInput = Partial<CreateProjectInput>;

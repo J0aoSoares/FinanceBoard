@@ -54,7 +54,6 @@ export interface BillFormValues {
   documentNumber: string;
   description: string;
   categoryId: string | null;
-  projectId: string | null;
   companyId: string | null;
   issueDate: string | null;
   totalAmount: Money;
@@ -77,7 +76,6 @@ export const emptyBillForm = (companyId?: string): BillFormValues => ({
   documentNumber: '',
   description: '',
   categoryId: null,
-  projectId: null,
   companyId: companyId ?? null,
   issueDate: null,
   totalAmount: '',
@@ -92,7 +90,6 @@ export const billToFormValues = (bill: Bill): BillFormValues => ({
   documentNumber: bill.documentNumber ?? '',
   description: bill.description,
   categoryId: bill.categoryId,
-  projectId: bill.projectId,
   issueDate: apiDate(bill.issueDate),
   labelPattern: 'manual',
   installments: [
@@ -315,7 +312,6 @@ export function buildInstallmentsPayload(
     ...buildFields(values),
     ...(documentNumber ? { documentNumber } : {}),
     ...(issueDate ? { issueDate } : {}),
-    ...(values.projectId ? { projectId: values.projectId } : {}),
     installments: values.installments.map((row) => {
       const installment = {
         label: row.label.trim(),
@@ -342,7 +338,6 @@ export function buildUpdatePayload(values: BillFormValues): UpdateBillInput {
   return {
     ...buildFields(values),
     ...nfFields(values),
-    projectId: values.projectId,
     amount: row.amount,
     dueDate: row.dueDate!,
     digitableLine: optionalDigitableLine(row.digitableLine) ?? null,

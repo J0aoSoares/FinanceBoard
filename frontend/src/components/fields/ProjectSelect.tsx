@@ -1,46 +1,41 @@
 import { useAuth } from '../../auth/use-auth';
-import { useCreateProjectByName, useProjects } from '../../hooks/use-catalog';
+import { useProjects } from '../../hooks/use-catalog';
 import { CreatableEntitySelect } from './CreatableEntitySelect';
 import { EntitySelect, type EntitySelectProps } from './EntitySelect';
 
 interface ProjectSelectProps extends EntitySelectProps {
   activeOnly?: boolean;
-  creatable?: boolean;
-  newProjectClientName?: string;
-  createDisabledReason?: string | null;
+  onCreateRequest?: (name: string) => void;
 }
 
 export function ProjectSelect({
   activeOnly = false,
-  creatable = false,
-  newProjectClientName = '',
-  createDisabledReason = null,
+  onCreateRequest,
   ...props
 }: ProjectSelectProps) {
   const { canWrite } = useAuth();
   const { data, isLoading } = useProjects();
-  const createByName = useCreateProjectByName(newProjectClientName);
 
   const projects = (data ?? []).filter(
     (project) =>
       !activeOnly || project.status === 'ACTIVE' || project.id === props.value,
   );
 
-  if (creatable && canWrite) {
+  if (onCreateRequest && canWrite) {
     return (
       <CreatableEntitySelect
         label="Obra"
         placeholder="Digite o nome da obra"
         entityName="obra"
-        items={projects}
+        items={projects.map((project) => ({
+          id: project.id,
+          name: project.name,
+          searchText: project.client?.name ?? project.clientName ?? '',
+          description: project.client?.name ?? project.clientName ?? undefined,
+        }))}
         loading={isLoading}
-        creating={createByName.isPending}
-        createDisabledReason={createDisabledReason}
-        onCreate={(name, select) =>
-          createByName.mutate(name, {
-            onSuccess: ({ item }) => select(item.id),
-          })
-        }
+        creating={false}
+        onCreate={(name) => onCreateRequest(name)}
         {...props}
       />
     );

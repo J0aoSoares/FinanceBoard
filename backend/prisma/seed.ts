@@ -1,5 +1,7 @@
 import {
+  ContactRole,
   PaymentStatus,
+  PersonType,
   Prisma,
   PrismaClient,
   ProjectStatus,
@@ -125,25 +127,105 @@ const SUPPLIERS = [
   { name: 'Escritório Contábil Associados', document: '88888888000158' },
 ];
 
+const CLIENTS = [
+  {
+    personType: PersonType.COMPANY,
+    name: 'Construtora Vale Verde LTDA',
+    tradeName: 'Construtora Vale Verde',
+    document: '12345678000195',
+    phone: '1134567890',
+    email: 'financeiro@valeverde.example',
+    city: 'Campinas',
+    state: 'SP',
+    contacts: [
+      {
+        name: 'Ricardo Alves',
+        role: ContactRole.ENGINEER,
+        phone: '19912345678',
+        email: 'ricardo@valeverde.example',
+        isPrimary: true,
+      },
+      {
+        name: 'Fernanda Lima',
+        role: ContactRole.FINANCE,
+        email: 'fernanda@valeverde.example',
+        isPrimary: true,
+      },
+    ],
+  },
+  {
+    personType: PersonType.COMPANY,
+    name: 'Prefeitura Municipal',
+    document: '98765432000198',
+    phone: '1932221000',
+    contacts: [
+      {
+        name: 'Eng. Marcos Pereira',
+        role: ContactRole.ENGINEER,
+        phone: '19987654321',
+        isPrimary: true,
+      },
+      {
+        name: 'Setor de Compras',
+        role: ContactRole.PURCHASING,
+        email: 'compras@prefeitura.example',
+      },
+    ],
+  },
+  {
+    personType: PersonType.COMPANY,
+    name: 'Indústria Metalúrgica Norte S.A.',
+    tradeName: 'Metalúrgica Norte',
+    document: '45612378000184',
+    contacts: [
+      {
+        name: 'Patrícia Gomes',
+        role: ContactRole.ADMINISTRATIVE,
+        phone: '1140028922',
+        isPrimary: true,
+      },
+    ],
+  },
+  {
+    personType: PersonType.INDIVIDUAL,
+    name: 'José Carlos da Silva',
+    tradeName: 'Mineradora Pedra Branca',
+    document: '12345678909',
+    email: 'jose@pedrabranca.example',
+    contacts: [
+      {
+        name: 'José Carlos da Silva',
+        role: ContactRole.OTHER,
+        phone: '35998877665',
+        isPrimary: true,
+      },
+    ],
+  },
+];
+
 const PROJECTS = [
   {
     name: 'Terraplenagem Loteamento Vale Verde',
-    clientName: 'Construtora Vale Verde',
+    client: 'Construtora Vale Verde LTDA',
+    referenceContact: 'Ricardo Alves',
     status: ProjectStatus.ACTIVE,
   },
   {
     name: 'Pavimentação Rodovia Municipal',
-    clientName: 'Prefeitura Municipal',
+    client: 'Prefeitura Municipal',
+    referenceContact: 'Eng. Marcos Pereira',
     status: ProjectStatus.ACTIVE,
   },
   {
     name: 'Movimentação de Solo Galpão Industrial',
-    clientName: 'Indústria Metalúrgica Norte',
+    client: 'Indústria Metalúrgica Norte S.A.',
+    referenceContact: null,
     status: ProjectStatus.CLOSED,
   },
   {
     name: 'Transporte de Agregados',
-    clientName: 'Mineradora Pedra Branca',
+    client: 'José Carlos da Silva',
+    referenceContact: 'José Carlos da Silva',
     status: ProjectStatus.ACTIVE,
   },
 ];
@@ -220,15 +302,49 @@ async function main() {
   }
   const supplier = (name: string) => suppliers.get(name) as string;
 
+  const clients = new Map<
+    string,
+    { id: string; contacts: { id: string; name: string }[] }
+  >();
+  for (const { contacts, ...client } of CLIENTS) {
+    const record =
+      (await prisma.client.findUnique({
+        where: { document: client.document },
+        include: { contacts: true },
+      })) ??
+      (await prisma.client.create({
+        data: {
+          ...client,
+          nameKey: nameKey(client.name),
+          contacts: { create: contacts },
+        },
+        include: { contacts: true },
+      }));
+    clients.set(client.name, record);
+  }
+
   const projects = new Map<string, string>();
-  for (const project of PROJECTS) {
+  for (const { client: clientName, referenceContact, ...project } of PROJECTS) {
     const key = nameKey(project.name);
+    const client = clients.get(clientName) as {
+      id: string;
+      contacts: { id: string; name: string }[];
+    };
     const existing = await prisma.project.findUnique({
       where: { nameKey: key },
     });
     const record =
       existing ??
-      (await prisma.project.create({ data: { ...project, nameKey: key } }));
+      (await prisma.project.create({
+        data: {
+          ...project,
+          nameKey: key,
+          clientId: client.id,
+          referenceContactId:
+            client.contacts.find((contact) => contact.name === referenceContact)
+              ?.id ?? null,
+        },
+      }));
     projects.set(project.name, record.id);
   }
   const project = (name: string) => projects.get(name) as string;

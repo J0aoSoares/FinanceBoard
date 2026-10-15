@@ -68,3 +68,61 @@ export function documentKind(value: string): 'CPF' | 'CNPJ' | null {
   }
   return null;
 }
+
+export type PersonType = 'COMPANY' | 'INDIVIDUAL';
+
+const allSameDigit = (digits: string) => /^(\d)\1+$/.test(digits);
+
+function checkDigit(digits: string, weights: number[]) {
+  const sum = weights.reduce(
+    (acc, weight, index) => acc + Number(digits[index]) * weight,
+    0,
+  );
+  const rest = sum % 11;
+  return rest < 2 ? 0 : 11 - rest;
+}
+
+export function isValidCpf(value: string): boolean {
+  const digits = onlyDigits(value);
+  if (digits.length !== 11 || allSameDigit(digits)) {
+    return false;
+  }
+  return (
+    checkDigit(digits, [10, 9, 8, 7, 6, 5, 4, 3, 2]) === Number(digits[9]) &&
+    checkDigit(digits, [11, 10, 9, 8, 7, 6, 5, 4, 3, 2]) === Number(digits[10])
+  );
+}
+
+export function isValidCnpj(value: string): boolean {
+  const digits = onlyDigits(value);
+  if (digits.length !== 14 || allSameDigit(digits)) {
+    return false;
+  }
+  return (
+    checkDigit(digits, [5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]) ===
+      Number(digits[12]) &&
+    checkDigit(digits, [6, 5, 4, 3, 2, 9, 8, 7, 6, 5, 4, 3, 2]) ===
+      Number(digits[13])
+  );
+}
+
+export function documentError(
+  value: string,
+  personType: PersonType,
+): string | null {
+  const digits = onlyDigits(value);
+  if (personType === 'COMPANY') {
+    if (digits.length !== 14) {
+      return 'CNPJ deve ter 14 dígitos';
+    }
+    return isValidCnpj(digits)
+      ? null
+      : 'CNPJ inválido: dígitos verificadores não conferem';
+  }
+  if (digits.length !== 11) {
+    return 'CPF deve ter 11 dígitos';
+  }
+  return isValidCpf(digits)
+    ? null
+    : 'CPF inválido: dígitos verificadores não conferem';
+}

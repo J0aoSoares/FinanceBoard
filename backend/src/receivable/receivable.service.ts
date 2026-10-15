@@ -24,7 +24,7 @@ import { UpdateReceivableDto } from './dto/update-receivable.dto';
 
 const receivableInclude = {
   company: true,
-  project: true,
+  project: { include: { client: { select: { id: true, name: true } } } },
   withholdings: { orderBy: { type: 'asc' } },
 } satisfies Prisma.ReceivableInclude;
 

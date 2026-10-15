@@ -1,7 +1,6 @@
 import { Button, Group, Select } from '@mantine/core';
 import { IconFilterOff } from '@tabler/icons-react';
 import { CategorySelect } from '../../components/fields/CategorySelect';
-import { ProjectSelect } from '../../components/fields/ProjectSelect';
 import { SupplierSelect } from '../../components/fields/SupplierSelect';
 import { useGlobalFilters } from '../../hooks/use-global-filters';
 import { STATUS_LABELS, type EffectiveStatus } from '../../api/types';
@@ -16,13 +15,6 @@ export function BillsFilters() {
 
   return (
     <Group gap="sm" align="flex-end" wrap="wrap">
-      <ProjectSelect
-        size="xs"
-        w={220}
-        placeholder="Todas as obras"
-        value={screen.projectId ?? null}
-        onChange={(value) => setFilter('projectId', value)}
-      />
       <CategorySelect
         size="xs"
         w={190}

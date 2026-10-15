@@ -27,7 +27,7 @@ describe('Cadastros auxiliares', () => {
     it('cadastra obra com status ACTIVE por padrão', async () => {
       const response = await server()
         .post('/projects')
-        .send({ name: 'Obra Alfa', clientName: 'Cliente Alfa' })
+        .send({ name: 'Obra Alfa', client: { name: 'Cliente Alfa' } })
         .expect(201);
 
       expect(response.body.status).toBe('ACTIVE');
@@ -36,7 +36,7 @@ describe('Cadastros auxiliares', () => {
     it('encerra uma obra', async () => {
       const created = await server()
         .post('/projects')
-        .send({ name: 'Obra Alfa', clientName: 'Cliente Alfa' });
+        .send({ name: 'Obra Alfa', client: { name: 'Cliente Alfa' } });
 
       const response = await server()
         .patch(`/projects/${created.body.id}`)
@@ -49,10 +49,14 @@ describe('Cadastros auxiliares', () => {
     it('filtra por status', async () => {
       await server()
         .post('/projects')
-        .send({ name: 'Ativa', clientName: 'Cliente' });
+        .send({ name: 'Ativa', client: { name: 'Cliente' } });
       await server()
         .post('/projects')
-        .send({ name: 'Encerrada', clientName: 'Cliente', status: 'CLOSED' });
+        .send({
+          name: 'Encerrada',
+          client: { name: 'Cliente' },
+          status: 'CLOSED',
+        });
 
       const ativas = await server().get('/projects?status=ACTIVE').expect(200);
       expect(ativas.body.map((p: { name: string }) => p.name)).toEqual([
@@ -70,17 +74,20 @@ describe('Cadastros auxiliares', () => {
     it('recusa obra com nome que só difere por maiúsculas, acentos ou espaços', async () => {
       const created = await server()
         .post('/projects')
-        .send({ name: ' Pavimentação Rodovia ', clientName: ' Prefeitura ' })
+        .send({
+          name: ' Pavimentação Rodovia ',
+          client: { name: ' Prefeitura ' },
+        })
         .expect(201);
       expect(created.body).toMatchObject({
         name: 'Pavimentação Rodovia',
-        clientName: 'Prefeitura',
+        client: expect.objectContaining({ name: 'Prefeitura' }),
       });
 
       for (const name of ['pavimentacao rodovia', 'PAVIMENTAÇÃO  RODOVIA']) {
         const response = await server()
           .post('/projects')
-          .send({ name, clientName: 'Outro cliente' })
+          .send({ name, client: { name: 'Outro cliente' } })
           .expect(409);
         expect(response.body.message).toBe('Já existe uma obra com esse nome');
       }
@@ -89,11 +96,11 @@ describe('Cadastros auxiliares', () => {
     it('recusa renomear obra para o nome de outra', async () => {
       await server()
         .post('/projects')
-        .send({ name: 'Galpão Norte', clientName: 'Cliente' })
+        .send({ name: 'Galpão Norte', client: { name: 'Cliente' } })
         .expect(201);
       const other = await server()
         .post('/projects')
-        .send({ name: 'Galpão Sul', clientName: 'Cliente' })
+        .send({ name: 'Galpão Sul', client: { name: 'Cliente' } })
         .expect(201);
 
       await server()
@@ -105,7 +112,7 @@ describe('Cadastros auxiliares', () => {
     it('recusa status fora do enum', async () => {
       await server()
         .post('/projects')
-        .send({ name: 'Obra', clientName: 'Cliente', status: 'PAUSADA' })
+        .send({ name: 'Obra', client: { name: 'Cliente' }, status: 'PAUSADA' })
         .expect(400);
     });
 

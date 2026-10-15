@@ -10,6 +10,7 @@ Referência das rotas do backend. Base: `http://localhost:3000`.
 - [Usuários](#usuários-users)
 - [Empresas](#empresas-companies)
 - [Nomes únicos](#nomes-únicos-fornecedores-categorias-e-obras)
+- [Clientes](#clientes-clients)
 - [Obras](#obras-projects)
 - [Fornecedores](#fornecedores-suppliers)
 - [Categorias](#categorias-categories)
@@ -221,6 +222,41 @@ O frontend usa isso no cadastro na hora: se a API recusar por duplicidade (outra
 
 ---
 
+## Clientes (`/clients`)
+
+O cliente da obra é um cadastro próprio, com documentos e contatos de referência.
+
+| Método | Rota            | Descrição |
+|--------|-----------------|-----------|
+| POST   | `/clients`      | Cadastra cliente, com `contacts[]` |
+| GET    | `/clients`      | Lista com `projectCount` e `primaryContact`; `?search=` busca em nome, nome fantasia e documento (parcial, só dígitos) |
+| GET    | `/clients/:id`  | Ficha com contatos e obras |
+| PATCH  | `/clients/:id`  | Atualiza; se vier `contacts[]`, sincroniza: com `id` atualiza, sem `id` cria, ausente remove |
+| DELETE | `/clients/:id`  | Remove (204); recusado (409) se houver obras vinculadas |
+
+```json
+POST /clients
+{
+  "personType": "COMPANY",
+  "name": "Construtora Vale Verde LTDA",
+  "tradeName": "Vale Verde",
+  "document": "12.345.678/0001-95",
+  "phone": "(11) 3456-7890",
+  "contacts": [
+    { "name": "Ricardo Alves", "role": "ENGINEER", "phone": "(19) 91234-5678", "isPrimary": true }
+  ]
+}
+```
+
+- só `name` é obrigatório; o nome **não** precisa ser único
+- `personType`: `COMPANY` (padrão) ou `INDIVIDUAL`; o documento é CNPJ para pessoa jurídica e CPF para física, validado pelos dígitos verificadores e **único** quando preenchido
+- documento, telefone e CEP são gravados só com dígitos; telefone com DDD, fixo (10 dígitos) ou celular (11, começando com 9); `state` é uma sigla de UF
+- campos opcionais aceitam `null` no `PATCH` para limpar
+- contato: `role` é `ENGINEER`, `FINANCE`, `PURCHASING`, `ADMINISTRATIVE` ou `OTHER`; precisa de telefone **ou** e-mail; no máximo um `isPrimary` por função (também garantido no banco)
+- remover um contato que é referência de alguma obra é permitido: a referência da obra fica vazia
+
+---
+
 ## Obras (`/projects`)
 
 | Método | Rota             | Descrição                       |
@@ -233,14 +269,29 @@ O frontend usa isso no cadastro na hora: se a API recusar por duplicidade (outra
 
 ```json
 POST /projects
-{ "name": "Terraplenagem Loteamento Vale Verde", "clientName": "Construtora Vale Verde" }
+{
+  "name": "Pavimentação Rua A",
+  "client": { "name": "Prefeitura de Itu", "document": "...", "contacts": [ ... ] },
+  "newReferenceContact": { "name": "Eng. Paulo", "role": "ENGINEER", "phone": "11912345678" }
+}
 ```
 
-`clientName` é obrigatório. `status` aceita `ACTIVE` (padrão) ou `CLOSED`. Para encerrar uma obra: `PATCH /projects/:id` com `{"status": "CLOSED"}`.
+O **cliente é obrigatório**, de um destes jeitos: `clientId` (cliente existente) ou `client` (cliente novo, com os mesmos campos de `POST /clients`), nunca os dois. Com `clientId`, `clientChanges` (campos de `PATCH /clients/:id`) atualiza o cliente junto.
+
+O **contato de referência** é opcional: `referenceContactId` (contato do cliente da obra; de outro cliente retorna 400) ou `newReferenceContact` (criado no cliente da obra). No `PATCH`, trocar o cliente limpa o contato de referência, a menos que venha um contato do cliente novo; `referenceContactId: null` limpa.
+
+Tudo roda **numa transação**: cliente novo, contatos e obra são criados juntos — se a obra falhar (nome repetido, por exemplo), o cliente não fica gravado. `GET /projects` e `GET /projects/:id` devolvem `client` (resumo) e `referenceContact`.
+
+`clientName` (texto) não é mais aceito; a coluna antiga continua no banco até a fase 2 da migração (veja abaixo). `status` aceita `ACTIVE` (padrão) ou `CLOSED`. Para encerrar uma obra: `PATCH /projects/:id` com `{"status": "CLOSED"}`.
 
 Obra com boletos ou contas a receber vinculados **não pode ser removida** (409) — encerre em vez de remover. Apagá-la desvincularia os lançamentos, jogando o custo dela para as despesas administrativas no relatório.
 
 **Filtro:** `GET /projects?status=ACTIVE`
+
+### Migração do cliente em texto para o cadastro de clientes
+
+- **Fase 1 (feita):** `20261015120000_clients` cria clientes e contatos e torna `clientName` opcional; `20261015120100_link_projects_to_clients` cria um cliente por nome distinto — comparando sem acentos, sem espaços nas pontas ou repetidos e sem diferenciar maiúsculas — e liga cada obra a ele. Pode rodar de novo sem duplicar: o id do cliente é derivado do nome normalizado. Coberto por `client.e2e-spec.ts`.
+- **Fase 2 (pendente):** ligar obras que ainda estiverem sem cliente, tornar `projects.clientId` obrigatório, remover a coluna `projects.clientName` e o fallback de leitura dela no relatório de resultado por obra.
 
 ---
 

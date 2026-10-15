@@ -5,12 +5,14 @@ import {
   Grid,
   Group,
   Modal,
+  ScrollArea,
   SegmentedControl,
   Stack,
   Text,
   TextInput,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
+import { useState } from 'react';
 import { IconInfoCircle } from '@tabler/icons-react';
 import { BankSelect } from '../../components/fields/BankSelect';
 import { CompanySelect } from '../../components/fields/CompanySelect';
@@ -18,6 +20,7 @@ import { DateField } from '../../components/fields/DateField';
 import { MoneyInput } from '../../components/fields/MoneyInput';
 import { ProjectSelect } from '../../components/fields/ProjectSelect';
 import { MoneyText } from '../../components/display/MoneyText';
+import { InlineProjectCreator } from '../projects/InlineProjectCreator';
 import {
   useCreateProjectBilling,
   useUpdateProjectBilling,
@@ -32,7 +35,6 @@ import {
   previewRetainage,
   projectBillingFormValidation,
   projectBillingToFormValues,
-  projectCreationBlockedReason,
   type ProjectBillingFormValues,
   type RetainageMode,
 } from './project-billing-form';
@@ -62,6 +64,7 @@ export function ProjectBillingFormModal({
     validateInputOnBlur: true,
   });
 
+  const [newProjectName, setNewProjectName] = useState<string | null>(null);
   const values = form.getValues();
   const isEditing = billing !== null;
   const amountLocked = isEditing && billing.paymentDate !== null;
@@ -106,8 +109,9 @@ export function ProjectBillingFormModal({
       opened
       onClose={onClose}
       title={isEditing ? `Editar fatura ${billing.number}` : 'Nova fatura'}
-      size="lg"
+      size="xl"
       centered
+      scrollAreaComponent={ScrollArea.Autosize}
     >
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="md">
@@ -141,30 +145,28 @@ export function ProjectBillingFormModal({
               />
             </Grid.Col>
 
-            <Grid.Col span={{ base: 12, sm: values.projectId ? 12 : 7 }}>
-              <ProjectSelect
-                creatable
-                activeOnly
-                withAsterisk
-                clearable={false}
-                placeholder="Digite ou selecione a obra"
-                newProjectClientName={values.newProjectClientName}
-                createDisabledReason={projectCreationBlockedReason(
-                  values.newProjectClientName,
-                )}
-                {...form.getInputProps('projectId')}
-              />
-            </Grid.Col>
-            {!values.projectId && (
-              <Grid.Col span={{ base: 12, sm: 5 }}>
-                <TextInput
-                  label="Cliente da obra"
-                  description="Obrigatório para cadastrar uma obra nova"
-                  placeholder="Quem contratou a obra"
-                  {...form.getInputProps('newProjectClientName')}
+            <Grid.Col span={12}>
+              {newProjectName === null ? (
+                <ProjectSelect
+                  activeOnly
+                  withAsterisk
+                  clearable={false}
+                  placeholder="Digite ou selecione a obra"
+                  description="Para uma obra nova, digite o nome e escolha Cadastrar obra"
+                  onCreateRequest={setNewProjectName}
+                  {...form.getInputProps('projectId')}
                 />
-              </Grid.Col>
-            )}
+              ) : (
+                <InlineProjectCreator
+                  initialName={newProjectName}
+                  onCancel={() => setNewProjectName(null)}
+                  onCreated={(project) => {
+                    form.setFieldValue('projectId', project.id);
+                    setNewProjectName(null);
+                  }}
+                />
+              )}
+            </Grid.Col>
 
             <Grid.Col span={{ base: 12, sm: 6 }}>
               <MoneyInput

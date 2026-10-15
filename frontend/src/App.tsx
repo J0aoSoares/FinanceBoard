@@ -7,6 +7,8 @@ import { LoginPage } from './features/auth/LoginPage';
 import { BillsPage } from './features/bills/BillsPage';
 import { CategoriesPage } from './features/categories/CategoriesPage';
 import { CompaniesPage } from './features/companies/CompaniesPage';
+import { ClientsPage } from './features/clients/ClientsPage';
+import { ClientDetailPage } from './features/clients/ClientDetailPage';
 import { ProjectsPage } from './features/projects/ProjectsPage';
 import { ProjectDetailPage } from './features/projects/ProjectDetailPage';
 import { CashflowReportPage } from './features/reports/CashflowReportPage';
@@ -53,6 +55,8 @@ export function App() {
           <Route path="/companies" element={<CompaniesPage />} />
           <Route path="/projects" element={<ProjectsPage />} />
           <Route path="/projects/:id" element={<ProjectDetailPage />} />
+          <Route path="/clients" element={<ClientsPage />} />
+          <Route path="/clients/:id" element={<ClientDetailPage />} />
           <Route path="/suppliers" element={<SuppliersPage />} />
           <Route path="/categories" element={<CategoriesPage />} />
           <Route element={<RequireAdmin />}>

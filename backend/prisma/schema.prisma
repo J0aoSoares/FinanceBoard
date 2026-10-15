@@ -40,20 +40,85 @@ model Company {
   @@map("companies")
 }
 
+enum PersonType {
+  COMPANY
+  INDIVIDUAL
+}
+
+enum ContactRole {
+  ENGINEER
+  FINANCE
+  PURCHASING
+  ADMINISTRATIVE
+  OTHER
+}
+
+model Client {
+  id                    String     @id @default(cuid())
+  personType            PersonType @default(COMPANY)
+  name                  String
+  nameKey               String
+  tradeName             String?
+  document              String?    @unique
+  municipalRegistration String?
+  phone                 String?
+  email                 String?
+  zipCode               String?
+  street                String?
+  streetNumber          String?
+  complement            String?
+  district              String?
+  city                  String?
+  state                 String?
+  notes                 String?
+  createdAt             DateTime   @default(now())
+  updatedAt             DateTime   @updatedAt
+
+  contacts ClientContact[]
+  projects Project[]
+
+  @@index([nameKey])
+  @@map("clients")
+}
+
+model ClientContact {
+  id        String      @id @default(cuid())
+  clientId  String
+  name      String
+  role      ContactRole
+  phone     String?
+  email     String?
+  isPrimary Boolean     @default(false)
+  createdAt DateTime    @default(now())
+  updatedAt DateTime    @updatedAt
+
+  client       Client    @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  referencedBy Project[]
+
+  @@index([clientId])
+  @@map("client_contacts")
+}
+
 model Project {
-  id         String        @id @default(cuid())
-  name       String
-  nameKey    String        @unique
-  clientName String
-  status     ProjectStatus @default(ACTIVE)
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
+  id                 String        @id @default(cuid())
+  name               String
+  nameKey            String        @unique
+  clientName         String?
+  clientId           String?
+  referenceContactId String?
+  status             ProjectStatus @default(ACTIVE)
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime      @updatedAt
+
+  client           Client?        @relation(fields: [clientId], references: [id], onDelete: Restrict)
+  referenceContact ClientContact? @relation(fields: [referenceContactId], references: [id], onDelete: SetNull)
 
   bills             Bill[]
   receivables       Receivable[]
   projectBillings   ProjectBilling[]
   retainageReleases RetainageRelease[]
 
+  @@index([clientId])
   @@map("projects")
 }
 

@@ -21,6 +21,7 @@ import { useAuth } from '../../auth/use-auth';
 import { ProjectFormModal } from './ProjectFormModal';
 import { useDeleteProject, useProjects } from '../../hooks/use-catalog';
 import {
+  CONTACT_ROLE_LABELS,
   PROJECT_STATUS_LABELS,
   PROJECT_STATUSES,
   type Project,
@@ -72,9 +73,24 @@ export function ProjectsPage() {
       ),
     },
     {
-      key: 'clientName',
+      key: 'client',
       header: 'Cliente',
-      render: (project) => project.clientName,
+      render: (project) =>
+        project.client ? (
+          <Anchor component={Link} to={`/clients/${project.client.id}`}>
+            {project.client.name}
+          </Anchor>
+        ) : (
+          (project.clientName ?? '—')
+        ),
+    },
+    {
+      key: 'referenceContact',
+      header: 'Contato na obra',
+      render: (project) =>
+        project.referenceContact
+          ? `${project.referenceContact.name} · ${CONTACT_ROLE_LABELS[project.referenceContact.role]}`
+          : '—',
     },
     {
       key: 'status',
@@ -95,8 +111,7 @@ export function ProjectsPage() {
     <Stack gap="lg" p="lg">
       <Group justify="space-between" align="flex-end">
         <Text size="sm" c="dimmed">
-          Obras usadas para ratear custos e receitas. Boletos sem obra contam
-          como despesa administrativa.
+          Obras dos clientes, usadas em faturas e contas a receber.
         </Text>
         {canWrite && (
           <Button

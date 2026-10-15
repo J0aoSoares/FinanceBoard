@@ -5,11 +5,13 @@ import {
   Grid,
   Group,
   Modal,
+  ScrollArea,
   Stack,
   Text,
   TextInput,
 } from '@mantine/core';
 import { useForm } from '@mantine/form';
+import { useState } from 'react';
 import { IconInfoCircle } from '@tabler/icons-react';
 import { CompanySelect } from '../../components/fields/CompanySelect';
 import { DateField } from '../../components/fields/DateField';
@@ -28,12 +30,13 @@ import {
   buildUpdatePayload,
   emptyReceivableForm,
   previewNetAmount,
-  projectCreationBlockedReason,
   receivableFormValidation,
   receivableToFormValues,
   type ReceivableFormValues,
 } from './receivable-form';
 import { WithholdingsField } from './WithholdingsField';
+import { InlineProjectCreator } from '../projects/InlineProjectCreator';
+import { projectClientName } from '../clients/client-form';
 
 interface ReceivableFormModalProps {
   receivable: Receivable | null;
@@ -52,8 +55,11 @@ export function ReceivableFormModal({
   const updateReceivable = useUpdateReceivable();
   const { data: projects } = useProjects();
 
-  const clientOf = (projectId: string | null) =>
-    projects?.find((project) => project.id === projectId)?.clientName ?? '';
+  const [newProjectName, setNewProjectName] = useState<string | null>(null);
+  const clientOf = (projectId: string | null) => {
+    const project = projects?.find((item) => item.id === projectId);
+    return project ? projectClientName(project) : '';
+  };
 
   const form = useForm<ReceivableFormValues>({
     mode: 'controlled',
@@ -74,7 +80,7 @@ export function ReceivableFormModal({
   const missingLegacyData = isEditing && receivable.number === null;
 
   const projectProps = form.getInputProps('projectId');
-  const changeProject = (next: string | null) => {
+  const changeProject = (next: string | null, nextClient = clientOf(next)) => {
     const current = form.getValues();
     const previousClient = clientOf(current.projectId);
     projectProps.onChange(next);
@@ -83,7 +89,7 @@ export function ReceivableFormModal({
       (current.clientName.trim() === '' ||
         current.clientName === previousClient)
     ) {
-      form.setFieldValue('clientName', clientOf(next));
+      form.setFieldValue('clientName', nextClient);
     }
   };
 
@@ -105,8 +111,9 @@ export function ReceivableFormModal({
       opened
       onClose={onClose}
       title={isEditing ? 'Editar NF de serviço' : 'Nova NF de serviço'}
-      size="lg"
+      size="xl"
       centered
+      scrollAreaComponent={ScrollArea.Autosize}
     >
       <form onSubmit={form.onSubmit(handleSubmit)}>
         <Stack gap="md">
@@ -149,20 +156,30 @@ export function ReceivableFormModal({
               />
             </Grid.Col>
             <Grid.Col span={{ base: 12, sm: 6 }}>
-              <ProjectSelect
-                creatable
-                clearable
-                activeOnly
-                placeholder="Digite ou selecione a obra"
-                description="Opcional. Ao escolher, preenche o tomador"
-                newProjectClientName={form.getValues().clientName}
-                createDisabledReason={projectCreationBlockedReason(
-                  form.getValues().clientName,
-                )}
-                {...projectProps}
-                onChange={changeProject}
-              />
+              {newProjectName === null && (
+                <ProjectSelect
+                  clearable
+                  activeOnly
+                  placeholder="Digite ou selecione a obra"
+                  description="Opcional. Ao escolher, preenche o tomador"
+                  onCreateRequest={setNewProjectName}
+                  {...projectProps}
+                  onChange={(next) => changeProject(next)}
+                />
+              )}
             </Grid.Col>
+            {newProjectName !== null && (
+              <Grid.Col span={12}>
+                <InlineProjectCreator
+                  initialName={newProjectName}
+                  onCancel={() => setNewProjectName(null)}
+                  onCreated={(project) => {
+                    changeProject(project.id, projectClientName(project));
+                    setNewProjectName(null);
+                  }}
+                />
+              </Grid.Col>
+            )}
 
             <Grid.Col span={12}>
               <TextInput

@@ -19,7 +19,6 @@ import { CategorySelect } from '../../components/fields/CategorySelect';
 import { CompanySelect } from '../../components/fields/CompanySelect';
 import { DateField } from '../../components/fields/DateField';
 import { MoneyInput } from '../../components/fields/MoneyInput';
-import { ProjectSelect } from '../../components/fields/ProjectSelect';
 import { SupplierSelect } from '../../components/fields/SupplierSelect';
 import {
   billDuplicatesQuery,
@@ -265,7 +264,7 @@ export function BillFormModal({
               />
             </Grid.Col>
 
-            <Grid.Col span={{ base: 12, sm: 6 }}>
+            <Grid.Col span={12}>
               <CategorySelect
                 disabled={nfOnly}
                 creatable
@@ -273,14 +272,6 @@ export function BillFormModal({
                 withAsterisk
                 clearable={false}
                 {...form.getInputProps('categoryId')}
-              />
-            </Grid.Col>
-            <Grid.Col span={{ base: 12, sm: 6 }}>
-              <ProjectSelect
-                disabled={nfOnly}
-                description="Vazio = despesa administrativa"
-                activeOnly
-                {...form.getInputProps('projectId')}
               />
             </Grid.Col>
           </Grid>

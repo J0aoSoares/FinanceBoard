@@ -1,5 +1,13 @@
-import { Button, Group, Modal, Select, Stack, TextInput } from '@mantine/core';
-import { useForm } from '@mantine/form';
+import {
+  Button,
+  Group,
+  Modal,
+  ScrollArea,
+  Select,
+  Stack,
+  TextInput,
+} from '@mantine/core';
+import { useState, type FormEvent } from 'react';
 import { useCreateProject, useUpdateProject } from '../../hooks/use-catalog';
 import {
   PROJECT_STATUS_LABELS,
@@ -7,16 +15,18 @@ import {
   type Project,
   type ProjectStatus,
 } from '../../api/types';
+import {
+  buildProjectInput,
+  emptyProjectClientState,
+  projectClientState,
+  validateProjectClient,
+  type FormErrors,
+} from '../clients/client-form';
+import { ProjectClientSection } from '../clients/ProjectClientSection';
 
 interface ProjectFormModalProps {
   project: Project | null;
   onClose: () => void;
-}
-
-interface ProjectFormValues {
-  name: string;
-  clientName: string;
-  status: ProjectStatus;
 }
 
 const statusOptions = PROJECT_STATUSES.map((status) => ({
@@ -27,34 +37,30 @@ const statusOptions = PROJECT_STATUSES.map((status) => ({
 export function ProjectFormModal({ project, onClose }: ProjectFormModalProps) {
   const createProject = useCreateProject();
   const updateProject = useUpdateProject();
-
-  const form = useForm<ProjectFormValues>({
-    mode: 'controlled',
-    initialValues: {
-      name: project?.name ?? '',
-      clientName: project?.clientName ?? '',
-      status: project?.status ?? 'ACTIVE',
-    },
-    validate: {
-      name: (value) =>
-        value.trim() === '' ? 'Nome da obra é obrigatório' : null,
-      clientName: (value) =>
-        value.trim() === '' ? 'Nome do cliente é obrigatório' : null,
-    },
-    validateInputOnBlur: true,
-  });
-
   const isEditing = project !== null;
+
+  const [name, setName] = useState(project?.name ?? '');
+  const [status, setStatus] = useState<ProjectStatus>(
+    project?.status ?? 'ACTIVE',
+  );
+  const [clientState, setClientState] = useState(() =>
+    project ? projectClientState(project) : emptyProjectClientState(),
+  );
+  const [errors, setErrors] = useState<FormErrors>({});
   const pending = createProject.isPending || updateProject.isPending;
 
-  const handleSubmit = (submitted: ProjectFormValues) => {
-    const input = {
-      name: submitted.name.trim(),
-      clientName: submitted.clientName.trim(),
-      status: submitted.status,
+  const handleSubmit = (event: FormEvent) => {
+    event.preventDefault();
+    const found: FormErrors = {
+      ...validateProjectClient(clientState),
+      ...(name.trim() === '' ? { name: 'Nome da obra é obrigatório' } : {}),
     };
+    setErrors(found);
+    if (Object.keys(found).length > 0) {
+      return;
+    }
+    const input = buildProjectInput(name, status, clientState, isEditing);
     const onSuccess = () => onClose();
-
     if (isEditing) {
       updateProject.mutate({ id: project.id, input }, { onSuccess });
     } else {
@@ -67,23 +73,26 @@ export function ProjectFormModal({ project, onClose }: ProjectFormModalProps) {
       opened
       onClose={onClose}
       title={isEditing ? 'Editar obra' : 'Nova obra'}
+      size="xl"
       centered
+      scrollAreaComponent={ScrollArea.Autosize}
     >
-      <form onSubmit={form.onSubmit(handleSubmit)}>
+      <form onSubmit={handleSubmit}>
         <Stack gap="md">
           <TextInput
             label="Nome da obra"
             placeholder="Residencial Vista Verde"
             withAsterisk
             data-autofocus
-            {...form.getInputProps('name')}
+            value={name}
+            error={errors.name}
+            onChange={(event) => setName(event.currentTarget.value)}
           />
 
-          <TextInput
-            label="Cliente"
-            placeholder="Incorporadora Exemplo"
-            withAsterisk
-            {...form.getInputProps('clientName')}
+          <ProjectClientSection
+            value={clientState}
+            onChange={setClientState}
+            errors={errors}
           />
 
           <Select
@@ -91,7 +100,8 @@ export function ProjectFormModal({ project, onClose }: ProjectFormModalProps) {
             description="Obras encerradas deixam de aparecer na seleção de novas contas"
             data={statusOptions}
             allowDeselect={false}
-            {...form.getInputProps('status')}
+            value={status}
+            onChange={(next) => next && setStatus(next as ProjectStatus)}
           />
 
           <Group justify="flex-end" gap="xs">

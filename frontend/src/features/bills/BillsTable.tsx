@@ -111,7 +111,7 @@ export function BillsTable({
     });
 
   const total = sumMoney(bills.map((bill) => bill.netAmount));
-  const columnCount = canWrite ? 10 : 9;
+  const columnCount = canWrite ? 9 : 8;
 
   const billCells = (bill: Bill, child: boolean) => (
     <>
@@ -141,13 +141,6 @@ export function BillsTable({
         )}
       </td>
       <td>{bill.category.name}</td>
-      <td>
-        {bill.project ? (
-          bill.project.name
-        ) : (
-          <span className={classes.secondary}>Administrativa</span>
-        )}
-      </td>
       <td>{formatDate(bill.issueDate)}</td>
       <td>
         {formatDate(bill.effectiveDueDate)}
@@ -188,7 +181,6 @@ export function BillsTable({
             <th>Fornecedor</th>
             <th>NF</th>
             <th>Categoria</th>
-            <th>Obra</th>
             <th>Emissão</th>
             <th>Vencimento</th>
             <th className={classes.numeric}>Valor</th>
@@ -244,13 +236,6 @@ export function BillsTable({
                     </span>
                   </td>
                   <td>{first.category.name}</td>
-                  <td>
-                    {first.project ? (
-                      first.project.name
-                    ) : (
-                      <span className={classes.secondary}>Administrativa</span>
-                    )}
-                  </td>
                   <td>{formatDate(first.issueDate)}</td>
                   <td>
                     <span className={classes.secondary}>
@@ -314,13 +299,13 @@ export function BillsTable({
 
         <tfoot>
           <tr className={classes.footer}>
-            <td colSpan={6}>
+            <td colSpan={5}>
               {bills.length} {bills.length === 1 ? 'boleto' : 'boletos'}
             </td>
             <td className={classes.numeric}>
               <MoneyText value={total} strong />
             </td>
-            <td colSpan={columnCount - 7} />
+            <td colSpan={columnCount - 6} />
           </tr>
         </tfoot>
       </table>

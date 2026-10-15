@@ -76,7 +76,7 @@ export function ProjectBillingsTable({
                 <td>
                   {billing.project.name}
                   <span className={classes.secondary}>
-                    {billing.project.clientName}
+                    {billing.project.client?.name ?? billing.project.clientName}
                   </span>
                 </td>
               )}

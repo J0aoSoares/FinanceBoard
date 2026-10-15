@@ -123,11 +123,6 @@ export const previewNetAmount = (values: ReceivableFormValues) =>
     values.withholdings.map((row) => row.amount),
   );
 
-export const projectCreationBlockedReason = (clientName: string) =>
-  clientName.trim() === ''
-    ? 'Preencha o tomador antes de cadastrar a obra'
-    : null;
-
 export function buildCreatePayload(
   values: ReceivableFormValues,
 ): CreateReceivableInput {

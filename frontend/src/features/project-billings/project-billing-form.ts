@@ -21,7 +21,6 @@ export interface ProjectBillingFormValues {
   number: string;
   companyId: string | null;
   projectId: string | null;
-  newProjectClientName: string;
   amount: Money;
   retainageMode: RetainageMode;
   retainage: string;
@@ -38,7 +37,6 @@ export const emptyProjectBillingForm = (
   number: '',
   companyId: companyId ?? null,
   projectId: projectId ?? null,
-  newProjectClientName: '',
   amount: '',
   retainageMode: 'percent',
   retainage: '',
@@ -199,11 +197,6 @@ export function buildUpdatePayload(
     : { ...fields, amount: values.amount, ...retainageFields(values, true) };
 }
 
-export const projectCreationBlockedReason = (clientName: string) =>
-  clientName.trim() === ''
-    ? 'Preencha o cliente da obra antes de cadastrá-la'
-    : null;
-
 export function projectBillingsCsvRows(
   billings: ProjectBilling[],
 ): CsvCell[][] {
@@ -224,7 +217,7 @@ export function projectBillingsCsvRows(
     ...billings.map((billing) => [
       billing.number,
       billing.project.name,
-      billing.project.clientName,
+      billing.project.client?.name ?? billing.project.clientName ?? '',
       billing.company.legalName,
       formatDate(billing.dueDate),
       csvMoney(billing.amount),

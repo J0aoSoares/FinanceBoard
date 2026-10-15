@@ -1,4 +1,4 @@
-import { Combobox, InputBase, Loader, useCombobox } from '@mantine/core';
+import { Combobox, InputBase, Loader, Text, useCombobox } from '@mantine/core';
 import { useEffect, useState, type FocusEvent } from 'react';
 import {
   findByNameKey,
@@ -15,6 +15,7 @@ export interface CreatableEntitySelectProps extends EntitySelectProps {
   entityName: string;
   creating: boolean;
   createDisabledReason?: string | null;
+  allowDuplicateNames?: boolean;
   onCreate: (name: string, select: (id: string) => void) => void;
 }
 
@@ -24,6 +25,7 @@ export function CreatableEntitySelect({
   entityName,
   creating,
   createDisabledReason = null,
+  allowDuplicateNames = false,
   onCreate,
   value,
   onChange,
@@ -52,7 +54,11 @@ export function CreatableEntitySelect({
     searchKey === ''
       ? items
       : items
-          .filter((item) => nameKey(item.name).includes(searchKey))
+          .filter((item) =>
+            nameKey(`${item.name} ${item.searchText ?? ''}`).includes(
+              searchKey,
+            ),
+          )
           .sort((left, right) =>
             left.id === exactMatch?.id
               ? -1
@@ -61,7 +67,8 @@ export function CreatableEntitySelect({
                 : 0,
           );
   const newName = search?.trim() ?? '';
-  const canCreate = searchKey !== '' && exactMatch === null;
+  const canCreate =
+    searchKey !== '' && (allowDuplicateNames || exactMatch === null);
 
   useEffect(() => {
     if (search !== null) {
@@ -96,7 +103,7 @@ export function CreatableEntitySelect({
       if (clearable && search !== null && search.trim() === '') {
         setSearch(null);
         onChange?.(null);
-      } else if (exactMatch) {
+      } else if (exactMatch && !allowDuplicateNames) {
         select(exactMatch.id);
       } else {
         setSearch(null);
@@ -144,6 +151,11 @@ export function CreatableEntitySelect({
               active={item.id === value}
             >
               {item.name}
+              {item.description && (
+                <Text size="xs" c="dimmed">
+                  {item.description}
+                </Text>
+              )}
             </Combobox.Option>
           ))}
           {canCreate && (

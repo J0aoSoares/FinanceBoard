@@ -197,7 +197,7 @@ describe('Contas a receber: NFs de serviço (/receivables)', () => {
         .expect(201);
 
       expect(response.body.clientName).toBe('Consórcio Beta');
-      expect(response.body.project.clientName).toBe('Cliente Alfa');
+      expect(response.body.project.client.name).toBe('Cliente Alfa');
     });
 
     it('recusa empresa inexistente', async () => {

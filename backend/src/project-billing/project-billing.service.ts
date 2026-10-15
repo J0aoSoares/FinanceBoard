@@ -26,7 +26,7 @@ import {
 
 const projectBillingInclude = {
   company: true,
-  project: true,
+  project: { include: { client: { select: { id: true, name: true } } } },
   bank: true,
 } satisfies Prisma.ProjectBillingInclude;
 

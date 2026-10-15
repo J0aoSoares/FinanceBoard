@@ -273,12 +273,11 @@ describe('formulário da NF de boletos', () => {
     });
   });
 
-  it('envia o total e a obra quando informados', () => {
-    const payload = buildInstallmentsPayload(
-      filled({ totalAmount: '200.55', projectId: 'project' }),
-    );
+  it('envia o total quando informado e nunca envia obra', () => {
+    const payload = buildInstallmentsPayload(filled({ totalAmount: '200.55' }));
     assert.equal(payload.totalAmount, '200.55');
-    assert.equal(payload.projectId, 'project');
+    assert.equal('projectId' in payload, false);
+    assert.equal('projectId' in buildUpdatePayload(filled()), false);
   });
 
   it('edição de um boleto envia os dados da NF e da linha dele', () => {
@@ -301,7 +300,6 @@ describe('formulário da NF de boletos', () => {
       companyId: 'company',
       categoryId: 'category',
       supplierId: 'supplier',
-      projectId: null,
       amount: '99.90',
       dueDate: '2026-02-10',
       digitableLine: null,

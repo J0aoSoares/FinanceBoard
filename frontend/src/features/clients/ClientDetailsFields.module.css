@@ -1,0 +1,25 @@
+.contact {
+  padding: var(--fb-space-sm);
+  border: 1px solid var(--fb-border);
+  border-radius: var(--fb-radius-sm);
+  background-color: var(--fb-surface);
+}
+
+.toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-size: var(--fb-font-size-sm);
+  color: var(--fb-text-muted);
+}
+
+.toggle:hover {
+  color: var(--fb-text);
+}
+
+.section {
+  padding: var(--fb-space-md);
+  border: 1px dashed var(--fb-border-strong);
+  border-radius: var(--fb-radius-md);
+  background-color: var(--fb-surface-sunken);
+}

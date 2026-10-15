@@ -39,7 +39,6 @@ export function BillsPage() {
     companyId: global.companyId,
     month: global.month,
     dateBasis: 'due',
-    projectId: screen.projectId,
     categoryId: screen.categoryId,
     supplierId: screen.supplierId,
     status: screen.status,

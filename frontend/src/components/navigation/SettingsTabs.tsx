@@ -4,6 +4,7 @@ import {
   IconBuildingSkyscraper,
   IconTags,
   IconTruck,
+  IconUserCircle,
   IconUsers,
 } from '@tabler/icons-react';
 import { Link, Outlet, useLocation } from 'react-router-dom';
@@ -14,6 +15,7 @@ import classes from './SettingsTabs.module.css';
 
 const baseTabs = [
   { value: '/companies', label: 'Empresas', icon: IconBuildingSkyscraper },
+  { value: '/clients', label: 'Clientes', icon: IconUserCircle },
   { value: '/projects', label: 'Obras', icon: IconBuildingCommunity },
   { value: '/suppliers', label: 'Fornecedores', icon: IconTruck },
   { value: '/categories', label: 'Categorias', icon: IconTags },

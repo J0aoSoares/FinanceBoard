@@ -7,6 +7,8 @@ export interface BaseFixtures {
   companyB: string;
   projectA: string;
   projectB: string;
+  clientA: string;
+  clientB: string;
   category: string;
   categoryAlt: string;
   supplier: string;
@@ -21,18 +23,24 @@ export async function createBaseFixtures(
   const companyB = await prisma.company.create({
     data: { legalName: 'Transporte Teste LTDA', cnpj: '22222222000172' },
   });
+  const clientA = await prisma.client.create({
+    data: { name: 'Cliente Alfa', nameKey: nameKey('Cliente Alfa') },
+  });
+  const clientB = await prisma.client.create({
+    data: { name: 'Cliente Beta', nameKey: nameKey('Cliente Beta') },
+  });
   const projectA = await prisma.project.create({
     data: {
       name: 'Obra Alfa',
       nameKey: nameKey('Obra Alfa'),
-      clientName: 'Cliente Alfa',
+      clientId: clientA.id,
     },
   });
   const projectB = await prisma.project.create({
     data: {
       name: 'Obra Beta',
       nameKey: nameKey('Obra Beta'),
-      clientName: 'Cliente Beta',
+      clientId: clientB.id,
     },
   });
   const category = await prisma.category.create({
@@ -57,6 +65,8 @@ export async function createBaseFixtures(
     companyB: companyB.id,
     projectA: projectA.id,
     projectB: projectB.id,
+    clientA: clientA.id,
+    clientB: clientB.id,
     category: category.id,
     categoryAlt: categoryAlt.id,
     supplier: supplier.id,

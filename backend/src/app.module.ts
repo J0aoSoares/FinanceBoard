@@ -8,6 +8,7 @@ import { RolesGuard } from './auth/guards/roles.guard';
 import { UserModule } from './user/user.module';
 import { CompanyModule } from './company/company.module';
 import { ProjectModule } from './project/project.module';
+import { ClientModule } from './client/client.module';
 import { SupplierModule } from './supplier/supplier.module';
 import { CategoryModule } from './category/category.module';
 import { BillModule } from './bill/bill.module';
@@ -29,6 +30,7 @@ import { validateEnv } from './config/env.validation';
     UserModule,
     CompanyModule,
     ProjectModule,
+    ClientModule,
     SupplierModule,
     CategoryModule,
     BillModule,

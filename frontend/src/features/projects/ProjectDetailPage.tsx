@@ -1,4 +1,13 @@
-import { Alert, Badge, Button, Group, Stack, Text, Title } from '@mantine/core';
+import {
+  Alert,
+  Anchor,
+  Badge,
+  Button,
+  Group,
+  Stack,
+  Text,
+  Title,
+} from '@mantine/core';
 import { IconArrowLeft, IconPlus } from '@tabler/icons-react';
 import type { ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
@@ -11,7 +20,9 @@ import {
   useProjectBillingSummary,
   useReceivables,
 } from '../../hooks/use-receivables';
-import { PROJECT_STATUS_LABELS } from '../../api/types';
+import { CONTACT_ROLE_LABELS, PROJECT_STATUS_LABELS } from '../../api/types';
+import { formatPhone } from '../../lib/contact-format';
+import { formatDocument } from '../../lib/document';
 import { ReceivablesTable } from '../receivables/ReceivablesTable';
 import { useReceivableDialogs } from '../receivables/use-receivable-dialogs';
 import { useProjectBillings } from '../../hooks/use-project-billings';
@@ -19,6 +30,15 @@ import { ProjectBillingsTable } from '../project-billings/ProjectBillingsTable';
 import { useProjectBillingDialogs } from '../project-billings/use-project-billing-dialogs';
 import { RetainageSection } from './RetainageSection';
 import classes from './ProjectDetailPage.module.css';
+
+function Info({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <div className={classes.field}>
+      <span className={classes.label}>{label}</span>
+      <span className={classes.value}>{children || '—'}</span>
+    </div>
+  );
+}
 
 function Card({
   label,
@@ -101,12 +121,7 @@ export function ProjectDetailPage() {
           <Stack gap="lg">
             <div className={classes.header}>
               <Group justify="space-between" align="flex-start">
-                <Stack gap={4}>
-                  <Title order={3}>{project.name}</Title>
-                  <Text size="sm" c="dimmed">
-                    Cliente: {project.clientName}
-                  </Text>
-                </Stack>
+                <Title order={3}>{project.name}</Title>
                 <Badge
                   variant="light"
                   radius="xl"
@@ -115,6 +130,59 @@ export function ProjectDetailPage() {
                   {PROJECT_STATUS_LABELS[project.status]}
                 </Badge>
               </Group>
+
+              <div className={classes.cards} style={{ marginTop: 12 }}>
+                <Info label="Cliente">
+                  {project.client ? (
+                    <Stack gap={0}>
+                      <Anchor
+                        component={Link}
+                        to={`/clients/${project.client.id}`}
+                        fw={500}
+                      >
+                        {project.client.name}
+                      </Anchor>
+                      {project.client.tradeName && (
+                        <Text size="xs" c="dimmed">
+                          {project.client.tradeName}
+                        </Text>
+                      )}
+                    </Stack>
+                  ) : (
+                    project.clientName
+                  )}
+                </Info>
+                <Info
+                  label={
+                    project.client?.personType === 'INDIVIDUAL' ? 'CPF' : 'CNPJ'
+                  }
+                >
+                  {formatDocument(project.client?.document)}
+                </Info>
+                <Info label="Telefone / e-mail do cliente">
+                  {[formatPhone(project.client?.phone), project.client?.email]
+                    .filter(Boolean)
+                    .join(' · ')}
+                </Info>
+                <Info label="Contato de referência na obra">
+                  {project.referenceContact && (
+                    <Stack gap={0}>
+                      <Text size="sm" fw={500}>
+                        {project.referenceContact.name} ·{' '}
+                        {CONTACT_ROLE_LABELS[project.referenceContact.role]}
+                      </Text>
+                      <Text size="xs" c="dimmed">
+                        {[
+                          formatPhone(project.referenceContact.phone),
+                          project.referenceContact.email,
+                        ]
+                          .filter(Boolean)
+                          .join(' · ')}
+                      </Text>
+                    </Stack>
+                  )}
+                </Info>
+              </div>
             </div>
 
             <QueryBoundary
