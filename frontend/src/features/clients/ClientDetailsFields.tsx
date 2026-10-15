@@ -21,17 +21,14 @@ import {
   IconTrash,
 } from '@tabler/icons-react';
 import { useState } from 'react';
+import { AddressFields } from '../../components/fields/AddressFields';
 import {
   CONTACT_ROLES,
   CONTACT_ROLE_LABELS,
   type ContactRole,
   type PersonType,
 } from '../../api/types';
-import {
-  BRAZILIAN_STATES,
-  formatPhone,
-  formatZipCode,
-} from '../../lib/contact-format';
+import { formatPhone } from '../../lib/contact-format';
 import { formatDocument, onlyDigits } from '../../lib/document';
 import {
   emptyContactRow,
@@ -44,11 +41,6 @@ import classes from './ClientDetailsFields.module.css';
 const roleOptions = CONTACT_ROLES.map((role) => ({
   value: role,
   label: CONTACT_ROLE_LABELS[role],
-}));
-
-const stateOptions = BRAZILIAN_STATES.map((state) => ({
-  value: state,
-  label: state,
 }));
 
 const formatOnBlur = (value: string, format: (digits: string) => string) => {
@@ -178,63 +170,11 @@ export function ClientDetailsFields({
 
   const secondary = (
     <Grid gap="sm">
-      <Grid.Col span={{ base: 12, sm: 4 }}>
-        <TextInput
-          label="CEP"
-          placeholder="00000-000"
-          value={value.zipCode}
-          error={error('zipCode')}
-          onChange={(event) => set({ zipCode: event.currentTarget.value })}
-          onBlur={() =>
-            set({ zipCode: formatOnBlur(value.zipCode, formatZipCode) })
-          }
-        />
-      </Grid.Col>
-      <Grid.Col span={{ base: 12, sm: 8 }}>
-        <TextInput
-          label="Logradouro"
-          value={value.street}
-          onChange={(event) => set({ street: event.currentTarget.value })}
-        />
-      </Grid.Col>
-      <Grid.Col span={{ base: 6, sm: 3 }}>
-        <TextInput
-          label="Número"
-          value={value.streetNumber}
-          onChange={(event) => set({ streetNumber: event.currentTarget.value })}
-        />
-      </Grid.Col>
-      <Grid.Col span={{ base: 6, sm: 4 }}>
-        <TextInput
-          label="Complemento"
-          value={value.complement}
-          onChange={(event) => set({ complement: event.currentTarget.value })}
-        />
-      </Grid.Col>
-      <Grid.Col span={{ base: 12, sm: 5 }}>
-        <TextInput
-          label="Bairro"
-          value={value.district}
-          onChange={(event) => set({ district: event.currentTarget.value })}
-        />
-      </Grid.Col>
-      <Grid.Col span={{ base: 8, sm: 9 }}>
-        <TextInput
-          label="Cidade"
-          value={value.city}
-          onChange={(event) => set({ city: event.currentTarget.value })}
-        />
-      </Grid.Col>
-      <Grid.Col span={{ base: 4, sm: 3 }}>
-        <Select
-          label="UF"
-          searchable
-          clearable
-          data={stateOptions}
-          value={value.state}
-          onChange={(state) => set({ state })}
-        />
-      </Grid.Col>
+      <AddressFields
+        value={value}
+        onChange={set}
+        zipCodeError={error('zipCode')}
+      />
       {isCompany && (
         <Grid.Col span={12}>
           <TextInput

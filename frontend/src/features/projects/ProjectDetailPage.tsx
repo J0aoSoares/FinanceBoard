@@ -8,8 +8,8 @@ import {
   Text,
   Title,
 } from '@mantine/core';
-import { IconArrowLeft, IconPlus } from '@tabler/icons-react';
-import type { ReactNode } from 'react';
+import { IconArrowLeft, IconPencil, IconPlus } from '@tabler/icons-react';
+import { useState, type ReactNode } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { MoneyText } from '../../components/display/MoneyText';
 import { QueryBoundary } from '../../components/display/QueryBoundary';
@@ -23,6 +23,9 @@ import {
 import { CONTACT_ROLE_LABELS, PROJECT_STATUS_LABELS } from '../../api/types';
 import { formatPhone } from '../../lib/contact-format';
 import { formatDocument } from '../../lib/document';
+import { formatDate } from '../../lib/date';
+import { ProjectFormModal } from './ProjectFormModal';
+import { projectAddress } from './project-form';
 import { ReceivablesTable } from '../receivables/ReceivablesTable';
 import { useReceivableDialogs } from '../receivables/use-receivable-dialogs';
 import { useProjectBillings } from '../../hooks/use-project-billings';
@@ -76,6 +79,7 @@ export function ProjectDetailPage() {
     defaultProjectId: id,
   });
 
+  const [editing, setEditing] = useState(false);
   const project = projects.data?.find((item) => item.id === id);
 
   return (
@@ -93,6 +97,13 @@ export function ProjectDetailPage() {
         </Button>
         {canWrite && project && (
           <Group gap="xs">
+            <Button
+              variant="default"
+              leftSection={<IconPencil size={16} />}
+              onClick={() => setEditing(true)}
+            >
+              Editar obra
+            </Button>
             <Button
               variant="light"
               leftSection={<IconPlus size={16} />}
@@ -183,6 +194,28 @@ export function ProjectDetailPage() {
                   )}
                 </Info>
               </div>
+
+              <div className={classes.cards} style={{ marginTop: 12 }}>
+                <Info label="Número do contrato">{project.contractNumber}</Info>
+                <Info label="Início">
+                  {project.startDate && formatDate(project.startDate)}
+                </Info>
+                <Info label="Previsão de término">
+                  {project.expectedEndDate &&
+                    formatDate(project.expectedEndDate)}
+                </Info>
+                <Info label="Endereço da obra">{projectAddress(project)}</Info>
+              </div>
+
+              {project.details && (
+                <div style={{ marginTop: 12 }}>
+                  <Info label="Detalhes">
+                    <Text size="sm" style={{ whiteSpace: 'pre-wrap' }}>
+                      {project.details}
+                    </Text>
+                  </Info>
+                </div>
+              )}
             </div>
 
             <QueryBoundary
@@ -276,6 +309,9 @@ export function ProjectDetailPage() {
 
       {dialogs}
       {billingDialogs.dialogs}
+      {editing && project && (
+        <ProjectFormModal project={project} onClose={() => setEditing(false)} />
+      )}
     </Stack>
   );
 }

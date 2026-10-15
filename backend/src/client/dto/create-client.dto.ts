@@ -15,7 +15,7 @@ import { BRAZILIAN_STATES } from '../../common/br-document.util';
 import { ClientContactDto } from './client-contact.dto';
 import { optionalText, trimmed } from './text-transforms';
 
-const upperText = ({ value }: { value: unknown }) => {
+export const upperText = ({ value }: { value: unknown }) => {
   const text = optionalText({ value });
   return typeof text === 'string' ? text.toUpperCase() : text;
 };

@@ -11,6 +11,7 @@ import {
   translateClientWriteError,
   updateClient,
 } from '../client/client-writer';
+import { onlyDigits, zipCodeError } from '../common/br-document.util';
 import { nameKey } from '../common/name-key.util';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateProjectDto } from './dto/create-project.dto';
@@ -60,6 +61,7 @@ export class ProjectService {
             status: dto.status,
             clientId,
             referenceContactId: referenceContactId ?? null,
+            ...this.detailFields(dto, null),
           },
           include: projectInclude,
         });
@@ -95,6 +97,7 @@ export class ProjectService {
     if (!existing) {
       throw new NotFoundException(NOT_FOUND);
     }
+    const details = this.detailFields(dto, existing);
 
     try {
       return await this.prisma.$transaction(async (tx) => {
@@ -114,6 +117,7 @@ export class ProjectService {
             status: dto.status,
             clientId: clientChanged ? clientId : undefined,
             referenceContactId,
+            ...details,
           },
           include: projectInclude,
         });
@@ -141,6 +145,49 @@ export class ProjectService {
     } catch (error) {
       throw this.translateWriteError(error);
     }
+  }
+
+  private detailFields(
+    dto: UpdateProjectDto,
+    existing: { startDate: Date | null; expectedEndDate: Date | null } | null,
+  ) {
+    const toDate = (value: string | null | undefined) =>
+      value === undefined ? undefined : value === null ? null : new Date(value);
+    const startDate = toDate(dto.startDate);
+    const expectedEndDate = toDate(dto.expectedEndDate);
+    const start = startDate === undefined ? existing?.startDate : startDate;
+    const end =
+      expectedEndDate === undefined
+        ? existing?.expectedEndDate
+        : expectedEndDate;
+    if (start && end && end < start) {
+      throw new BadRequestException(
+        'Previsão de término não pode ser anterior à data de início',
+      );
+    }
+
+    let zipCode = dto.zipCode;
+    if (zipCode) {
+      const error = zipCodeError(zipCode);
+      if (error) {
+        throw new BadRequestException(`${error.replace('CEP', 'CEP da obra')}`);
+      }
+      zipCode = onlyDigits(zipCode);
+    }
+
+    return {
+      contractNumber: dto.contractNumber,
+      startDate,
+      expectedEndDate,
+      zipCode,
+      street: dto.street,
+      streetNumber: dto.streetNumber,
+      complement: dto.complement,
+      district: dto.district,
+      city: dto.city,
+      state: dto.state,
+      details: dto.details,
+    };
   }
 
   private assertExclusiveFields(dto: UpdateProjectDto) {

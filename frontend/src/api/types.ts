@@ -117,6 +117,31 @@ export interface Project {
   referenceContactId: string | null;
   referenceContact: ClientContact | null;
   status: ProjectStatus;
+  contractNumber: string | null;
+  startDate: string | null;
+  expectedEndDate: string | null;
+  zipCode: string | null;
+  street: string | null;
+  streetNumber: string | null;
+  complement: string | null;
+  district: string | null;
+  city: string | null;
+  state: string | null;
+  details: string | null;
+}
+
+export interface ProjectDetailsInput {
+  contractNumber?: string | null;
+  startDate?: string | null;
+  expectedEndDate?: string | null;
+  zipCode?: string | null;
+  street?: string | null;
+  streetNumber?: string | null;
+  complement?: string | null;
+  district?: string | null;
+  city?: string | null;
+  state?: string | null;
+  details?: string | null;
 }
 
 export interface Category {
@@ -271,7 +296,7 @@ export interface CreateCompanyInput {
 
 export type UpdateCompanyInput = Partial<CreateCompanyInput>;
 
-export interface CreateProjectInput {
+export interface CreateProjectInput extends ProjectDetailsInput {
   name: string;
   status?: ProjectStatus;
   clientId?: string;

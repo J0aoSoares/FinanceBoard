@@ -107,6 +107,17 @@ model Project {
   clientId           String?
   referenceContactId String?
   status             ProjectStatus @default(ACTIVE)
+  contractNumber     String?
+  startDate          DateTime?
+  expectedEndDate    DateTime?
+  zipCode            String?
+  street             String?
+  streetNumber       String?
+  complement         String?
+  district           String?
+  city               String?
+  state              String?
+  details            String?
   createdAt          DateTime      @default(now())
   updatedAt          DateTime      @updatedAt
 

@@ -282,6 +282,8 @@ O **contato de referência** é opcional: `referenceContactId` (contato do clien
 
 Tudo roda **numa transação**: cliente novo, contatos e obra são criados juntos — se a obra falhar (nome repetido, por exemplo), o cliente não fica gravado. `GET /projects` e `GET /projects/:id` devolvem `client` (resumo) e `referenceContact`.
 
+**Dados opcionais da obra:** `contractNumber`, `startDate` e `expectedEndDate` (`aaaa-mm-dd`; o término não pode ser anterior ao início), endereço (`zipCode` com 8 dígitos, gravado só com dígitos, `street`, `streetNumber`, `complement`, `district`, `city`, `state` como sigla de UF) e `details` (texto livre, até 5000 caracteres). No `PATCH`, `null` limpa o campo.
+
 `clientName` (texto) não é mais aceito; a coluna antiga continua no banco até a fase 2 da migração (veja abaixo). `status` aceita `ACTIVE` (padrão) ou `CLOSED`. Para encerrar uma obra: `PATCH /projects/:id` com `{"status": "CLOSED"}`.
 
 Obra com boletos ou contas a receber vinculados **não pode ser removida** (409) — encerre em vez de remover. Apagá-la desvincularia os lançamentos, jogando o custo dela para as despesas administrativas no relatório.
