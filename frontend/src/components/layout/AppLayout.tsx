@@ -2,6 +2,7 @@ import { ActionIcon, AppShell, Tooltip } from '@mantine/core';
 import { IconSettings } from '@tabler/icons-react';
 import { Link } from 'react-router-dom';
 import { AccountMenu } from './AccountMenu';
+import { ScreenErrorBoundary } from '../display/ScreenErrorBoundary';
 import { AppHeader } from './AppHeader';
 import { GlobalFilterBar } from './GlobalFilterBar';
 import { TopNavigation } from '../navigation/TopNavigation';
@@ -30,7 +31,9 @@ export function AppLayout() {
       </AppHeader>
 
       <AppShell.Main className={classes.main}>
-        <TopNavigation />
+        <ScreenErrorBoundary>
+          <TopNavigation />
+        </ScreenErrorBoundary>
       </AppShell.Main>
     </AppShell>
   );

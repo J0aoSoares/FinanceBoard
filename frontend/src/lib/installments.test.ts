@@ -13,7 +13,12 @@ import {
   duplicatedLabels,
   installmentLabels,
 } from './installment-labels.ts';
-import { netOfDeductions, splitMoney, sumMoney } from './money.ts';
+import {
+  compareMoney,
+  netOfDeductions,
+  splitMoney,
+  sumMoney,
+} from './money.ts';
 
 describe('vencimentos mensais', () => {
   it('dia inexistente cai no último dia do mês, nunca no mês seguinte', () => {
@@ -171,5 +176,13 @@ describe('prévia do líquido da nota de serviço', () => {
   it('não mostra líquido com valor incompleto', () => {
     assert.equal(netOfDeductions('', []), null);
     assert.equal(netOfDeductions('1000.00', ['']), null);
+  });
+});
+
+describe('comparação de valores com sinal', () => {
+  it('compara valores negativos sem lançar erro', () => {
+    assert.ok(compareMoney('-200.00', '0.00') < 0);
+    assert.ok(compareMoney('0.00', '-0.01') > 0);
+    assert.equal(compareMoney('-5.00', '-5.00'), 0);
   });
 });

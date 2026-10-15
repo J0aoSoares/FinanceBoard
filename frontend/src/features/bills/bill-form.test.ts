@@ -216,6 +216,35 @@ describe('formulário da NF de boletos', () => {
     assert.equal(validate(null, values, 'installments.1.paymentDate'), null);
   });
 
+  it('soma dos boletos acima do total mostra o erro em vez de quebrar a tela', () => {
+    const values = filled({
+      totalAmount: '1000.00',
+      installments: [
+        {
+          label: '1',
+          dueDate: '2026-02-10',
+          amount: '700.00',
+          digitableLine: '',
+          paid: false,
+          paymentDate: null,
+        },
+        {
+          label: '2',
+          dueDate: '2026-03-10',
+          amount: '500.00',
+          digitableLine: '',
+          paid: false,
+          paymentDate: null,
+        },
+      ],
+    });
+    assert.equal(totalDifference(values), '-200.00');
+    assert.equal(
+      billFormValidation.totalAmount(values.totalAmount, values),
+      'A soma dos boletos difere do valor total em R$ 200,00',
+    );
+  });
+
   it('cadastra boletos sem NF: número e emissão ficam de fora', () => {
     const values = filled({ documentNumber: '  ', issueDate: null });
     assert.equal('documentNumber' in billFormValidation, false);

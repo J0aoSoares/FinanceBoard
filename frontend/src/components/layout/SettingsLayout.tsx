@@ -2,6 +2,7 @@ import { AppShell, Button } from '@mantine/core';
 import { IconArrowLeft } from '@tabler/icons-react';
 import { Link } from 'react-router-dom';
 import { AccountMenu } from './AccountMenu';
+import { ScreenErrorBoundary } from '../display/ScreenErrorBoundary';
 import { AppHeader } from './AppHeader';
 import { SettingsTabs } from '../navigation/SettingsTabs';
 import { useGlobalFilters } from '../../hooks/use-global-filters';
@@ -26,7 +27,9 @@ export function SettingsLayout() {
       </AppHeader>
 
       <AppShell.Main className={classes.main}>
-        <SettingsTabs />
+        <ScreenErrorBoundary>
+          <SettingsTabs />
+        </ScreenErrorBoundary>
       </AppShell.Main>
     </AppShell>
   );

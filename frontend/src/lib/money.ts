@@ -58,7 +58,7 @@ export function netOfDeductions(
 }
 
 export function compareMoney(left: Money, right: Money): number {
-  return toCents(left) - toCents(right);
+  return toSignedCents(left) - toSignedCents(right);
 }
 
 export function parseMoneyInput(raw: string): Money | null {
